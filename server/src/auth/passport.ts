@@ -20,10 +20,13 @@ export function setupPassport(): void {
     clientSecret: config.discord.clientSecret,
     callbackURL: config.discord.callbackUrl,
     scope: ['identify'],
-  }, async (_accessToken: string, _refreshToken: string, profile: Profile, done: (error: any, user?: Express.User | false) => void) => {
+  }, (_accessToken: string, _refreshToken: string, profile: Profile, done: (error: any, user?: Express.User | false) => void) => {
+    (async () => {
     try {
+      console.log(`OAuth callback for: ${profile.username} (${profile.id})`);
       // Check guild membership and required role
       const memberRoles = await getMemberRoles(profile.id);
+      console.log(`Member roles: ${memberRoles.join(', ') || 'none'}`);
 
       if (memberRoles.length === 0) {
         console.log(`Login denied: ${profile.username} (${profile.id}) - not in guild`);
@@ -56,6 +59,7 @@ export function setupPassport(): void {
       console.error('Discord OAuth error:', error);
       return done(error as Error);
     }
+    })().catch(err => done(err));
   }));
 
   passport.serializeUser((user: Express.User, done) => {
