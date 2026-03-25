@@ -20,6 +20,9 @@ export const config = {
     clientId: required('DISCORD_CLIENT_ID'),
     clientSecret: required('DISCORD_CLIENT_SECRET'),
     callbackUrl: process.env.DISCORD_CALLBACK_URL || 'http://localhost:3001/auth/discord/callback',
+    botToken: required('DISCORD_BOT_TOKEN'),
+    guildId: required('DISCORD_GUILD_ID'),
+    allowedRoleIds: (process.env.DISCORD_ALLOWED_ROLE_IDS || '').split(',').filter(Boolean),
   },
 
   sessionSecret: required('SESSION_SECRET'),
