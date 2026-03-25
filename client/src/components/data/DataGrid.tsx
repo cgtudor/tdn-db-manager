@@ -1,6 +1,13 @@
-import { useState, useCallback } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Pencil, Trash2, X, Check, Filter } from 'lucide-react';
-import { Button } from '../ui/Button';
+import { useMemo, useState, useCallback, useEffect } from 'react';
+import {
+  DataGrid as MuiDataGrid,
+  GridColDef,
+  GridPaginationModel,
+  GridSortModel,
+  GridActionsCellItem,
+} from '@mui/x-data-grid';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { Trash2 } from 'lucide-react';
 import type { ColumnInfo } from '../../types';
 
 interface DataGridProps {
@@ -8,226 +15,248 @@ interface DataGridProps {
   rows: Record<string, unknown>[];
   total: number;
   page: number;
-  totalPages: number;
-  sort?: string;
-  order?: 'asc' | 'desc';
-  filters: Record<string, string>;
+  limit: number;
   canEdit?: boolean;
   onSort: (column: string) => void;
-  onFilter: (column: string, value: string) => void;
   onPageChange: (page: number) => void;
+  onLimitChange: (limit: number) => void;
   onUpdate?: (rowid: number, changes: Record<string, unknown>) => Promise<void>;
   onDelete?: (rowid: number) => Promise<void>;
-  onInsert?: (row: Record<string, unknown>) => Promise<void>;
+}
+
+function useIsDark() {
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+  return dark;
+}
+
+// Build a MUI theme that matches our Tailwind design tokens
+function buildTheme(dark: boolean) {
+  return createTheme({
+    palette: {
+      mode: dark ? 'dark' : 'light',
+      primary: {
+        main: dark ? '#818cf8' : '#6366f1',
+      },
+      background: {
+        default: dark ? '#111827' : '#f9fafb',
+        paper: dark ? '#1f2937' : '#ffffff',
+      },
+      text: {
+        primary: dark ? '#f9fafb' : '#111827',
+        secondary: dark ? '#d1d5db' : '#6b7280',
+      },
+      divider: dark ? '#374151' : '#e5e7eb',
+      error: {
+        main: dark ? '#f87171' : '#ef4444',
+      },
+    },
+    typography: {
+      fontFamily: 'inherit',
+      fontSize: 13,
+    },
+    shape: {
+      borderRadius: 8,
+    },
+  });
 }
 
 export function DataGrid({
-  columns, rows, total, page, totalPages,
-  sort, order, filters, canEdit,
-  onSort, onFilter, onPageChange, onUpdate, onDelete, onInsert,
+  columns, rows, total, page, limit, canEdit,
+  onSort, onPageChange, onLimitChange, onUpdate, onDelete,
 }: DataGridProps) {
-  const [editingCell, setEditingCell] = useState<{ rowid: number; column: string } | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [filterColumn, setFilterColumn] = useState<string | null>(null);
-  const [filterInput, setFilterInput] = useState('');
-  const [showAddRow, setShowAddRow] = useState(false);
-  const [newRow, setNewRow] = useState<Record<string, string>>({});
+  const isDark = useIsDark();
+  const muiTheme = useMemo(() => buildTheme(isDark), [isDark]);
 
-  const visibleColumns = columns.filter(c => c.name !== '_rowid');
+  const gridColumns: GridColDef[] = useMemo(() => {
+    const cols: GridColDef[] = columns
+      .filter(c => c.name !== '_rowid')
+      .map(col => ({
+        field: col.name,
+        headerName: col.name,
+        flex: 1,
+        minWidth: 100,
+        editable: canEdit ?? false,
+        filterable: true,
+        type: col.type.toUpperCase().includes('INT') || col.type.toUpperCase().includes('REAL')
+          ? 'number' : 'string',
+      }));
 
-  const startEdit = useCallback((rowid: number, column: string, currentValue: unknown) => {
-    setEditingCell({ rowid, column });
-    setEditValue(currentValue === null ? '' : String(currentValue));
-  }, []);
-
-  const saveEdit = useCallback(async () => {
-    if (!editingCell || !onUpdate) return;
-    const value = editValue === '' ? null : editValue;
-    await onUpdate(editingCell.rowid, { [editingCell.column]: value });
-    setEditingCell(null);
-  }, [editingCell, editValue, onUpdate]);
-
-  const cancelEdit = useCallback(() => {
-    setEditingCell(null);
-  }, []);
-
-  const handleAddRow = async () => {
-    if (!onInsert) return;
-    const row: Record<string, unknown> = {};
-    for (const col of visibleColumns) {
-      if (newRow[col.name]) row[col.name] = newRow[col.name];
+    if (canEdit) {
+      cols.push({
+        field: '_actions',
+        type: 'actions',
+        headerName: '',
+        width: 70,
+        getActions: (params) => [
+          <GridActionsCellItem
+            key="delete"
+            icon={<Trash2 className="h-4 w-4" />}
+            label="Delete"
+            onClick={() => onDelete?.(params.row._rowid as number)}
+          />,
+        ],
+      });
     }
-    await onInsert(row);
-    setNewRow({});
-    setShowAddRow(false);
-  };
+
+    return cols;
+  }, [columns, canEdit, onDelete]);
+
+  const gridRows = useMemo(() =>
+    rows.map(row => ({
+      ...row,
+      id: row._rowid as number,
+    })),
+    [rows]
+  );
+
+  const handlePaginationChange = useCallback((model: GridPaginationModel) => {
+    onPageChange(model.page + 1);
+    if (model.pageSize !== limit) {
+      onLimitChange(model.pageSize);
+    }
+  }, [onPageChange, onLimitChange, limit]);
+
+  const handleSortChange = useCallback((model: GridSortModel) => {
+    if (model.length > 0) {
+      onSort(model[0].field);
+    } else {
+      onSort('');
+    }
+  }, [onSort]);
+
+  const processRowUpdate = useCallback(async (newRow: Record<string, unknown>, oldRow: Record<string, unknown>) => {
+    const rowid = newRow._rowid as number;
+    const changes: Record<string, unknown> = {};
+    for (const key of Object.keys(newRow)) {
+      if (key === '_rowid' || key === 'id') continue;
+      if (newRow[key] !== oldRow[key]) {
+        changes[key] = newRow[key];
+      }
+    }
+    if (Object.keys(changes).length > 0 && onUpdate) {
+      await onUpdate(rowid, changes);
+    }
+    return newRow;
+  }, [onUpdate]);
+
+  const borderColor = isDark ? '#374151' : '#e5e7eb';
+  const headerBg = isDark ? '#111827' : '#f9fafb';
+  const hoverBg = isDark ? '#374151' : '#f3f4f6';
+  const textSecondary = isDark ? '#d1d5db' : '#6b7280';
 
   return (
-    <div className="flex flex-col gap-2">
-      {/* Toolbar */}
-      {canEdit && (
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="secondary" onClick={() => setShowAddRow(!showAddRow)}>
-            {showAddRow ? 'Cancel' : '+ Add Row'}
-          </Button>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="border border-border rounded-lg overflow-auto bg-surface">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-surface-dim">
-              {visibleColumns.map(col => (
-                <th key={col.name} className="text-left px-3 py-2 font-medium text-text-secondary whitespace-nowrap">
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => onSort(col.name)} className="flex items-center gap-1 hover:text-text">
-                      {col.name}
-                      {sort === col.name ? (
-                        order === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 opacity-30" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => { setFilterColumn(filterColumn === col.name ? null : col.name); setFilterInput(filters[col.name] || ''); }}
-                      className={`p-0.5 rounded hover:bg-surface-hover ${filters[col.name] ? 'text-primary' : 'opacity-30 hover:opacity-100'}`}
-                    >
-                      <Filter className="h-3 w-3" />
-                    </button>
-                  </div>
-                  {filterColumn === col.name && (
-                    <div className="mt-1 flex items-center gap-1">
-                      <input
-                        autoFocus
-                        value={filterInput}
-                        onChange={e => setFilterInput(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') { onFilter(col.name, filterInput); setFilterColumn(null); }
-                          if (e.key === 'Escape') setFilterColumn(null);
-                        }}
-                        className="w-full px-2 py-0.5 text-xs border border-border rounded bg-surface"
-                        placeholder="Filter..."
-                      />
-                      <button onClick={() => { onFilter(col.name, filterInput); setFilterColumn(null); }} className="text-primary">
-                        <Check className="h-3 w-3" />
-                      </button>
-                      {filters[col.name] && (
-                        <button onClick={() => { onFilter(col.name, ''); setFilterColumn(null); }} className="text-danger">
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </th>
-              ))}
-              {canEdit && <th className="w-20 px-3 py-2"></th>}
-            </tr>
-          </thead>
-          <tbody>
-            {/* Add row form */}
-            {showAddRow && (
-              <tr className="border-b border-border bg-primary-light/30">
-                {visibleColumns.map(col => (
-                  <td key={col.name} className="px-3 py-1.5">
-                    <input
-                      value={newRow[col.name] || ''}
-                      onChange={e => setNewRow(prev => ({ ...prev, [col.name]: e.target.value }))}
-                      className="w-full px-2 py-0.5 text-xs border border-border rounded bg-surface"
-                      placeholder={col.name}
-                    />
-                  </td>
-                ))}
-                <td className="px-3 py-1.5">
-                  <div className="flex gap-1">
-                    <button onClick={handleAddRow} className="text-success hover:text-green-700"><Check className="h-4 w-4" /></button>
-                    <button onClick={() => { setShowAddRow(false); setNewRow({}); }} className="text-danger"><X className="h-4 w-4" /></button>
-                  </div>
-                </td>
-              </tr>
-            )}
-
-            {rows.map((row, i) => {
-              const rowid = row._rowid as number;
-              return (
-                <tr key={rowid ?? i} className="border-b border-border last:border-0 hover:bg-surface-hover/50">
-                  {visibleColumns.map(col => {
-                    const isEditing = editingCell?.rowid === rowid && editingCell?.column === col.name;
-                    const value = row[col.name];
-
-                    return (
-                      <td key={col.name} className="px-3 py-1.5 max-w-xs">
-                        {isEditing ? (
-                          <div className="flex items-center gap-1">
-                            <input
-                              autoFocus
-                              value={editValue}
-                              onChange={e => setEditValue(e.target.value)}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') saveEdit();
-                                if (e.key === 'Escape') cancelEdit();
-                              }}
-                              className="w-full px-2 py-0.5 text-xs border border-primary rounded bg-surface"
-                            />
-                            <button onClick={saveEdit} className="text-success"><Check className="h-3.5 w-3.5" /></button>
-                            <button onClick={cancelEdit} className="text-danger"><X className="h-3.5 w-3.5" /></button>
-                          </div>
-                        ) : (
-                          <span
-                            className={`truncate block ${canEdit ? 'cursor-pointer hover:bg-primary-light/30 rounded px-1 -mx-1' : ''}`}
-                            onClick={() => canEdit && startEdit(rowid, col.name, value)}
-                            title={value === null ? 'NULL' : String(value)}
-                          >
-                            {value === null ? <span className="text-text-muted italic">NULL</span> : String(value)}
-                          </span>
-                        )}
-                      </td>
-                    );
-                  })}
-                  {canEdit && (
-                    <td className="px-3 py-1.5">
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => startEdit(rowid, visibleColumns[0].name, row[visibleColumns[0].name])}
-                          className="p-1 rounded hover:bg-surface-hover text-text-muted hover:text-primary"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onDelete?.(rowid)}
-                          className="p-1 rounded hover:bg-surface-hover text-text-muted hover:text-danger"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-
-        {rows.length === 0 && (
-          <div className="px-4 py-8 text-center text-sm text-text-muted">No data</div>
-        )}
+    <ThemeProvider theme={muiTheme}>
+      <div className="w-full h-full">
+        <MuiDataGrid
+          rows={gridRows}
+          columns={gridColumns}
+          rowCount={total}
+          paginationMode="server"
+          sortingMode="server"
+          paginationModel={{ page: page - 1, pageSize: limit }}
+          onPaginationModelChange={handlePaginationChange}
+          onSortModelChange={handleSortChange}
+          pageSizeOptions={[25, 50, 100, 200]}
+          processRowUpdate={canEdit ? processRowUpdate : undefined}
+          disableRowSelectionOnClick
+          density="compact"
+          autoHeight={false}
+          showToolbar
+          sx={{
+            height: '100%',
+            border: 'none',
+            fontFamily: 'inherit',
+            fontSize: '0.8125rem',
+            // Header
+            '& .MuiDataGrid-columnHeaders': {
+              backgroundColor: headerBg,
+              borderBottom: `1px solid ${borderColor}`,
+            },
+            '& .MuiDataGrid-columnHeader': {
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              color: textSecondary,
+              letterSpacing: '0.01em',
+              '&:focus, &:focus-within': {
+                outline: 'none',
+              },
+            },
+            '& .MuiDataGrid-columnSeparator': {
+              color: borderColor,
+            },
+            // Cells
+            '& .MuiDataGrid-cell': {
+              borderBottom: `1px solid ${borderColor}`,
+              '&:focus, &:focus-within': {
+                outline: 'none',
+              },
+            },
+            '& .MuiDataGrid-row': {
+              '&:hover': {
+                backgroundColor: hoverBg,
+              },
+              '&.Mui-selected': {
+                backgroundColor: isDark ? 'rgba(129,140,248,0.08)' : 'rgba(99,102,241,0.04)',
+                '&:hover': {
+                  backgroundColor: isDark ? 'rgba(129,140,248,0.12)' : 'rgba(99,102,241,0.08)',
+                },
+              },
+            },
+            // Footer / pagination
+            '& .MuiDataGrid-footerContainer': {
+              borderTop: `1px solid ${borderColor}`,
+              minHeight: 44,
+            },
+            '& .MuiTablePagination-root': {
+              fontSize: '0.75rem',
+              color: textSecondary,
+            },
+            '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+              fontSize: '0.75rem',
+              color: textSecondary,
+            },
+            '& .MuiTablePagination-select': {
+              fontSize: '0.75rem',
+            },
+            // Toolbar
+            '& .MuiDataGrid-toolbarContainer': {
+              padding: '4px 8px',
+              gap: '4px',
+              borderBottom: `1px solid ${borderColor}`,
+              '& .MuiButtonBase-root': {
+                fontSize: '0.75rem',
+                color: textSecondary,
+                textTransform: 'none',
+                fontFamily: 'inherit',
+              },
+            },
+            // Scrollbar
+            '& .MuiDataGrid-scrollbar': {
+              '&::-webkit-scrollbar': {
+                width: 6,
+                height: 6,
+              },
+              '&::-webkit-scrollbar-thumb': {
+                borderRadius: 3,
+                backgroundColor: isDark ? '#4b5563' : '#d1d5db',
+              },
+            },
+            // No rows overlay
+            '& .MuiDataGrid-overlay': {
+              backgroundColor: 'transparent',
+              fontSize: '0.8125rem',
+              color: textSecondary,
+            },
+          }}
+        />
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-text-secondary">
-          <span>{total} rows total</span>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span>Page {page} of {totalPages}</span>
-            <Button size="sm" variant="ghost" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+    </ThemeProvider>
   );
 }
