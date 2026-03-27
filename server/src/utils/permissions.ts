@@ -18,7 +18,7 @@ export function canReadDatabase(role: UserRole, _dbFilename: string): boolean {
 }
 
 // Tables that should be hidden from the UI (internal system tables)
-const HIDDEN_TABLES = new Set(['db', 'meta', 'migrations']);
+const HIDDEN_TABLES = new Set(['meta', 'migrations']);
 
 export function isHiddenTable(tableName: string): boolean {
   return HIDDEN_TABLES.has(tableName);
