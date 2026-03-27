@@ -58,6 +58,26 @@ export function reopenManagedDb(filename: string): Database.Database {
   return getManagedDb(filename);
 }
 
+export function deleteDatabaseFile(filename: string): void {
+  validateDbName(filename);
+
+  // Close any open connection first
+  closeManagedDb(filename);
+
+  const dbPath = getDbPath(filename);
+  if (!fs.existsSync(dbPath)) {
+    throw new Error(`Database not found: ${filename}`);
+  }
+
+  // Delete the main file and WAL/SHM sidecars
+  for (const suffix of ['', '-wal', '-shm']) {
+    const filePath = dbPath + suffix;
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+}
+
 export function listDatabaseFiles(): string[] {
   if (!fs.existsSync(config.databaseDir)) {
     return [];

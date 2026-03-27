@@ -165,6 +165,25 @@ export function deleteRows(
   return result.changes;
 }
 
+export function dropTable(
+  dbFilename: string,
+  tableName: string,
+  user: Express.User
+): void {
+  validateTableExists(dbFilename, tableName);
+  ensureBackup(dbFilename);
+
+  const db = getManagedDb(dbFilename);
+
+  // Capture row count for audit
+  const countResult = db.prepare(`SELECT COUNT(*) as count FROM "${tableName}"`).get() as { count: number };
+
+  db.prepare(`DROP TABLE "${tableName}"`).run();
+
+  logAudit(user.id, user.username, dbFilename, tableName, 'DROP_TABLE', undefined, undefined, undefined,
+    `Dropped table "${tableName}" (${countResult.count} rows)`);
+}
+
 export function exportTableCsv(dbFilename: string, tableName: string, filters?: Record<string, string>): string {
   validateTableExists(dbFilename, tableName);
   const schema = getTableSchema(dbFilename, tableName);

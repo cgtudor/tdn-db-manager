@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
     username TEXT NOT NULL,
     database_name TEXT NOT NULL,
     table_name TEXT NOT NULL,
-    action TEXT NOT NULL CHECK(action IN ('INSERT', 'UPDATE', 'DELETE', 'BULK_DELETE', 'MOVE', 'RESTORE')),
+    action TEXT NOT NULL CHECK(action IN ('INSERT', 'UPDATE', 'DELETE', 'BULK_DELETE', 'MOVE', 'RESTORE', 'DROP_TABLE', 'DELETE_DATABASE')),
     row_identifier TEXT,
     old_values TEXT,
     new_values TEXT,

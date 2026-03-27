@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth, requireDbWrite } from '../auth/middleware';
+import { requireAuth, requireAdmin, requireDbWrite } from '../auth/middleware';
 import { p } from '../utils/params';
 import * as genericTable from '../services/generic-table';
 
@@ -75,6 +75,17 @@ router.delete('/:db/tables/:table/:rowid', requireDbWrite, (req, res) => {
   try {
     const db = p(req.params.db), table = p(req.params.table), rowid = p(req.params.rowid);
     genericTable.deleteRow(db, table, parseInt(rowid, 10), req.user!);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Drop table (admin only)
+router.delete('/:db/tables/:table', requireAdmin, (req, res) => {
+  try {
+    const db = p(req.params.db), table = p(req.params.table);
+    genericTable.dropTable(db, table, req.user!);
     res.json({ success: true });
   } catch (error: any) {
     res.status(400).json({ error: error.message });

@@ -19,9 +19,42 @@ export function getAppDb(): Database.Database {
     const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf-8');
     db.exec(schema);
 
+    migrateAuditLogConstraint();
     seedDefaultConfig();
   }
   return db;
+}
+
+function migrateAuditLogConstraint(): void {
+  // Check if the existing constraint needs updating by inspecting the table SQL
+  const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='audit_log'").get() as { sql: string } | undefined;
+  if (!tableInfo || tableInfo.sql.includes('DROP_TABLE')) return;
+
+  // Recreate the table with the updated constraint
+  db.exec(`
+    ALTER TABLE audit_log RENAME TO audit_log_old;
+
+    CREATE TABLE audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_discord_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      database_name TEXT NOT NULL,
+      table_name TEXT NOT NULL,
+      action TEXT NOT NULL CHECK(action IN ('INSERT', 'UPDATE', 'DELETE', 'BULK_DELETE', 'MOVE', 'RESTORE', 'DROP_TABLE', 'DELETE_DATABASE')),
+      row_identifier TEXT,
+      old_values TEXT,
+      new_values TEXT,
+      description TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    INSERT INTO audit_log SELECT * FROM audit_log_old;
+    DROP TABLE audit_log_old;
+
+    CREATE INDEX IF NOT EXISTS idx_audit_log_database ON audit_log(database_name);
+    CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_discord_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
+  `);
 }
 
 function seedDefaultConfig(): void {

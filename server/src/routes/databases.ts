@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { requireAuth } from '../auth/middleware';
+import { requireAuth, requireAdmin } from '../auth/middleware';
 import { p } from '../utils/params';
-import { listDatabaseFiles, getDatabaseFileStats } from '../db/managed-db';
+import { listDatabaseFiles, getDatabaseFileStats, deleteDatabaseFile } from '../db/managed-db';
 import { getTableCount, getAllTableSchemas, getTableNames } from '../services/db-introspection';
-import { getAllDbConfigs } from '../db/app-db';
+import { getAllDbConfigs, logAudit } from '../db/app-db';
 import { DatabaseInfo } from '../types';
+import { ensureBackup } from '../services/backup';
 
 const router = Router();
 
@@ -64,6 +65,29 @@ router.get('/:db', requireAuth, (req, res) => {
     });
   } catch (error: any) {
     res.status(404).json({ error: error.message });
+  }
+});
+
+// Delete database (admin only)
+router.delete('/:db', requireAdmin, (req, res) => {
+  try {
+    const db = p(req.params.db);
+
+    // Create a final backup before deletion
+    ensureBackup(db);
+
+    const stats = getDatabaseFileStats(db);
+    let tableCount = 0;
+    try { tableCount = getTableCount(db); } catch { /* skip */ }
+
+    deleteDatabaseFile(db);
+
+    logAudit(req.user!.id, req.user!.username, db, '*', 'DELETE_DATABASE', undefined, undefined, undefined,
+      `Deleted database "${db}" (${tableCount} tables, ${stats.sizeBytes} bytes)`);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
   }
 });
 

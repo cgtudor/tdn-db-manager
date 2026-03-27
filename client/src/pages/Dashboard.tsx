@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom';
 import { useDatabases } from '../hooks/useDatabases';
 import { useAuth } from '../hooks/useAuth';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRecentAudit } from '../api/admin';
-import { Database, Swords, FlaskConical, HardDrive, Clock, ArrowRight } from 'lucide-react';
+import { deleteDatabase } from '../api/databases';
+import { Database, Swords, FlaskConical, HardDrive, Clock, ArrowRight, Trash2, Loader2 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Loading } from '../components/shared/Loading';
+import { ConfirmDialog } from '../components/shared/ConfirmDialog';
 import { formatDistanceToNow } from 'date-fns';
+import { useState } from 'react';
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -17,10 +20,20 @@ function formatBytes(bytes: number): string {
 export function Dashboard() {
   const { data: databases, isLoading } = useDatabases();
   const { isAdmin } = useAuth();
+  const queryClient = useQueryClient();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const { data: recentAudit } = useQuery({
     queryKey: ['recentAudit'],
     queryFn: () => getRecentAudit(10),
     staleTime: 30_000,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (dbFilename: string) => deleteDatabase(dbFilename),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['databases'] });
+      setDeleteTarget(null);
+    },
   });
 
   if (isLoading) return <Loading />;
@@ -68,36 +81,60 @@ export function Dashboard() {
         <h2 className="text-lg font-semibold text-text mb-3">Databases</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {databases?.map(db => (
-            <Link
-              key={db.filename}
-              to={`/db/${db.filename}`}
-              className="flex items-start gap-3 p-4 rounded-lg border border-border bg-surface hover:border-primary/40 hover:shadow-sm transition-all"
-            >
-              <Database className="h-5 w-5 text-text-muted mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm text-text truncate">{db.displayName}</span>
-                  {db.editorAccess === 'write' && <Badge variant="success">editable</Badge>}
+            <div key={db.filename} className="relative flex items-start gap-3 p-4 rounded-lg border border-border bg-surface hover:border-primary/40 hover:shadow-sm transition-all">
+              <Link
+                to={`/db/${db.filename}`}
+                className="flex items-start gap-3 flex-1 min-w-0"
+              >
+                <Database className="h-5 w-5 text-text-muted mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm text-text truncate">{db.displayName}</span>
+                    {db.editorAccess === 'write' && <Badge variant="success">editable</Badge>}
+                  </div>
+                  {db.description && (
+                    <p className="text-xs text-text-secondary mt-0.5 truncate">{db.description}</p>
+                  )}
+                  <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted">
+                    <span className="flex items-center gap-1">
+                      <HardDrive className="h-3 w-3" />
+                      {formatBytes(db.sizeBytes)}
+                    </span>
+                    <span>{db.tableCount} tables</span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatDistanceToNow(new Date(db.lastModified), { addSuffix: true })}
+                    </span>
+                  </div>
                 </div>
-                {db.description && (
-                  <p className="text-xs text-text-secondary mt-0.5 truncate">{db.description}</p>
-                )}
-                <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted">
-                  <span className="flex items-center gap-1">
-                    <HardDrive className="h-3 w-3" />
-                    {formatBytes(db.sizeBytes)}
-                  </span>
-                  <span>{db.tableCount} tables</span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {formatDistanceToNow(new Date(db.lastModified), { addSuffix: true })}
-                  </span>
-                </div>
-              </div>
-            </Link>
+              </Link>
+              {isAdmin && (
+                <button
+                  onClick={() => { deleteMutation.reset(); setDeleteTarget(db.filename); }}
+                  className="p-1.5 rounded-md text-text-muted hover:text-danger hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex-shrink-0"
+                  title="Delete database"
+                  disabled={deleteMutation.isPending && deleteTarget === db.filename}
+                >
+                  {deleteMutation.isPending && deleteTarget === db.filename
+                    ? <Loader2 className="h-4 w-4 animate-spin text-danger" />
+                    : <Trash2 className="h-4 w-4" />}
+                </button>
+              )}
+            </div>
           ))}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => { setDeleteTarget(null); deleteMutation.reset(); }}
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget); }}
+        title="Delete Database"
+        description={`Are you sure you want to delete "${deleteTarget}"? The database file will be permanently removed. A backup will be created first.`}
+        confirmLabel="Delete Database"
+        isLoading={deleteMutation.isPending}
+        error={deleteMutation.error ? (deleteMutation.error as Error).message : null}
+      />
 
       {/* Recent audit */}
       {isAdmin && recentAudit && recentAudit.length > 0 && (

@@ -1,4 +1,4 @@
-import { apiGet } from './client';
+import { apiGet, apiDelete } from './client';
 import type { DatabaseInfo, DatabaseDetail, PaginatedResponse } from '../types';
 
 export function getDatabases(): Promise<DatabaseInfo[]> {
@@ -60,6 +60,14 @@ export function bulkDeleteRows(db: string, table: string, rowids: number[]): Pro
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ rowids }),
   }).then(r => r.json());
+}
+
+export function dropTable(db: string, table: string): Promise<void> {
+  return apiDelete(`/api/databases/${db}/tables/${table}`);
+}
+
+export function deleteDatabase(db: string): Promise<void> {
+  return apiDelete(`/api/databases/${db}`);
 }
 
 export function getTableExportUrl(db: string, table: string): string {
