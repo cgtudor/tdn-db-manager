@@ -27,6 +27,23 @@ function validateTier(tier: string): void {
   }
 }
 
+function ensureTables(): void {
+  const db = getManagedDb(DB_FILE);
+  for (const cat of CATEGORIES) {
+    for (const tier of TIERS) {
+      db.prepare(`CREATE TABLE IF NOT EXISTS "${tableName(cat, tier)}" ("resref" TEXT, "name" TEXT)`).run();
+    }
+  }
+}
+
+let tablesEnsured = false;
+function ensureTablesOnce(): void {
+  if (!tablesEnsured) {
+    ensureTables();
+    tablesEnsured = true;
+  }
+}
+
 export function getCategories(): string[] {
   return [...CATEGORIES];
 }
@@ -36,6 +53,7 @@ export function getTiers(): string[] {
 }
 
 export function getOverview(): LootCategory[] {
+  ensureTablesOnce();
   const db = getManagedDb(DB_FILE);
   const results: LootCategory[] = [];
 
@@ -58,6 +76,7 @@ export function getOverview(): LootCategory[] {
 
 export function getCategoryItems(category: string): Record<string, LootItem[]> {
   validateCategory(category);
+  ensureTablesOnce();
   const db = getManagedDb(DB_FILE);
   const result: Record<string, LootItem[]> = {};
 
@@ -160,6 +179,7 @@ export function moveItems(
 }
 
 export function searchLoot(query: string): { category: string; tier: string; resref: string; name: string }[] {
+  ensureTablesOnce();
   const db = getManagedDb(DB_FILE);
   const results: { category: string; tier: string; resref: string; name: string }[] = [];
   const searchTerm = `%${query}%`;
