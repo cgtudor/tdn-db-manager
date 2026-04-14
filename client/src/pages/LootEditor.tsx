@@ -10,13 +10,14 @@ import { Search, Plus, X, Trash2, GripVertical, Pencil, Check } from 'lucide-rea
 import { categoryLabel, tierLabel } from '../utils';
 import type { LootItem } from '../types';
 
-const CATEGORIES = ['weapon', 'armor', 'clothing', 'jewlery', 'misc', 'shield', 'ammo'];
-const TIERS = ['a', 'b', 'c', 'd', 'e'];
+const CATEGORIES = ['weapon', 'armor', 'clothing', 'jewlery', 'misc', 'shield', 'ammo', 'crafting', 'recipe'];
+const TIERS = ['a', 'b', 'c', 'cplus', 'd', 'e'];
 
 const TIER_COLORS: Record<string, string> = {
   a: 'bg-tier-a border-amber-300',
   b: 'bg-tier-b border-blue-300',
   c: 'bg-tier-c border-green-300',
+  cplus: 'bg-tier-c border-emerald-400',
   d: 'bg-tier-d border-violet-300',
   e: 'bg-tier-e border-pink-300',
 };
@@ -151,7 +152,7 @@ export function LootEditor() {
       </div>
 
       {/* Tier columns */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-6 gap-3">
         {TIERS.map(tier => {
           const tierItems = filteredItems(tier);
           return (

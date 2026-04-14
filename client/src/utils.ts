@@ -16,9 +16,15 @@ export function formatBytes(bytes: number): string {
 }
 
 export function tierLabel(tier: string): string {
+  if (tier === 'cplus') return 'Tier C+';
   return `Tier ${tier.toUpperCase()}`;
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  jewlery: 'Jewellery',
+  recipe: 'Books',
+};
+
 export function categoryLabel(cat: string): string {
-  return cat.charAt(0).toUpperCase() + cat.slice(1);
+  return CATEGORY_LABELS[cat] ?? cat.charAt(0).toUpperCase() + cat.slice(1);
 }

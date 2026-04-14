@@ -5,8 +5,8 @@ import { LootItem, LootCategory } from '../types';
 
 const DB_FILE = 'db_loot.sqlite3';
 
-const CATEGORIES = ['weapon', 'armor', 'clothing', 'jewlery', 'misc', 'shield', 'ammo'] as const;
-const TIERS = ['a', 'b', 'c', 'd', 'e'] as const;
+const CATEGORIES = ['weapon', 'armor', 'clothing', 'jewlery', 'misc', 'shield', 'ammo', 'crafting', 'recipe'] as const;
+const TIERS = ['a', 'b', 'c', 'cplus', 'd', 'e'] as const;
 
 export type LootCategoryName = typeof CATEGORIES[number];
 export type LootTierName = typeof TIERS[number];
