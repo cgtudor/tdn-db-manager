@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useDatabases } from '../../hooks/useDatabases';
 import { useTheme } from '../../hooks/useTheme';
 import {
-  LayoutDashboard, Swords, FlaskConical, Database,
+  LayoutDashboard, Swords, FlaskConical, Leaf, Database,
   Shield, ClipboardList, Users, ChevronDown, ChevronRight, LogOut, Search,
   Sun, Moon, Monitor
 } from 'lucide-react';
@@ -48,6 +48,7 @@ export function Sidebar() {
         <SidebarLink to="/" icon={LayoutDashboard}>Dashboard</SidebarLink>
         <SidebarLink to="/loot" icon={Swords}>Loot Editor</SidebarLink>
         <SidebarLink to="/crafting" icon={FlaskConical}>Crafting Editor</SidebarLink>
+        <SidebarLink to="/ingredients" icon={Leaf}>Ingredients</SidebarLink>
         <SidebarLink to="/search" icon={Search}>Search</SidebarLink>
 
         {/* Database list */}

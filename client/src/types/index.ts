@@ -98,6 +98,41 @@ export interface Ingredient {
   ingredient_resref: string;
 }
 
+export interface IngredientListItem {
+  ingredient_id: number;
+  ingredient_name: string;
+  ingredient_resref: string;
+  ingredient_tier: number | null;
+  profession_id: number | null;
+  profession_name: string | null;
+  profession_type: string | null;
+  recipe_count: number;
+}
+
+export interface IngredientDetail {
+  ingredient_id: number;
+  ingredient_name: string;
+  ingredient_resref: string;
+  ingredient_tier: number | null;
+  placeable_resref: string | null;
+  source: {
+    profession_id: number | null;
+    profession_name: string | null;
+    profession_type: string | null;
+  };
+  biomes: { biome_name: string; biome_description: string; spawn_rate: number }[];
+  recipes: {
+    recipe_id: number;
+    recipe_name: string;
+    recipe_resref: string;
+    recipe_crafting_level: number;
+    profession_name: string;
+    recipe_type_name: string;
+    quantity: number;
+    product_name: string;
+  }[];
+}
+
 export interface AuditEntry {
   id: number;
   user_discord_id: string;

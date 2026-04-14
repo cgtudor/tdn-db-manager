@@ -242,6 +242,132 @@ export function getIngredients(search?: string): { ingredient_id: number; ingred
   return db.prepare('SELECT * FROM ingredients ORDER BY ingredient_name').all() as any[];
 }
 
+export interface IngredientListItem {
+  ingredient_id: number;
+  ingredient_name: string;
+  ingredient_resref: string;
+  ingredient_tier: number | null;
+  profession_id: number | null;
+  profession_name: string | null;
+  profession_type: string | null;
+  recipe_count: number;
+}
+
+export function getIngredientsEnhanced(params: {
+  search?: string;
+  professionId?: number;
+  professionType?: string;
+  tier?: number;
+}): IngredientListItem[] {
+  const db = getManagedDb(DB_FILE);
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+
+  if (params.search) {
+    conditions.push('(i.ingredient_name LIKE ? OR i.ingredient_resref LIKE ?)');
+    const term = `%${params.search}%`;
+    values.push(term, term);
+  }
+  if (params.professionId) {
+    conditions.push('i.profession_id = ?');
+    values.push(params.professionId);
+  }
+  if (params.professionType) {
+    conditions.push('p.profession_type = ?');
+    values.push(params.professionType);
+  }
+  if (params.tier) {
+    conditions.push('i.ingredient_tier = ?');
+    values.push(params.tier);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  return db.prepare(`
+    SELECT i.ingredient_id, i.ingredient_name, i.ingredient_resref, i.ingredient_tier,
+           i.profession_id, p.profession_name, p.profession_type,
+           (SELECT COUNT(*) FROM recipe_ingredients ri WHERE ri.ingredient_id = i.ingredient_id) as recipe_count
+    FROM ingredients i
+    LEFT JOIN professions p ON i.profession_id = p.profession_id
+    ${where}
+    ORDER BY i.ingredient_name
+  `).all(...values) as IngredientListItem[];
+}
+
+export interface IngredientDetail {
+  ingredient_id: number;
+  ingredient_name: string;
+  ingredient_resref: string;
+  ingredient_tier: number | null;
+  placeable_resref: string | null;
+  source: {
+    profession_id: number | null;
+    profession_name: string | null;
+    profession_type: string | null;
+  };
+  biomes: { biome_name: string; biome_description: string; spawn_rate: number }[];
+  recipes: {
+    recipe_id: number;
+    recipe_name: string;
+    recipe_resref: string;
+    recipe_crafting_level: number;
+    profession_name: string;
+    recipe_type_name: string;
+    quantity: number;
+    product_name: string;
+  }[];
+}
+
+export function getIngredientDetail(ingredientId: number): IngredientDetail | null {
+  const db = getManagedDb(DB_FILE);
+
+  const row = db.prepare(`
+    SELECT i.*, p.profession_name, p.profession_type
+    FROM ingredients i
+    LEFT JOIN professions p ON i.profession_id = p.profession_id
+    WHERE i.ingredient_id = ?
+  `).get(ingredientId) as any;
+
+  if (!row) return null;
+
+  const biomes = db.prepare(`
+    SELECT b.biome_name, b.biome_description, ib.spawn_rate
+    FROM ingredients_biomes ib
+    JOIN biomes b ON ib.biome_id = b.biome_id
+    WHERE ib.ingredient_id = ?
+    ORDER BY ib.spawn_rate DESC
+  `).all(ingredientId) as IngredientDetail['biomes'];
+
+  const recipes = db.prepare(`
+    SELECT r.recipe_id, r.recipe_name, r.recipe_resref, r.recipe_crafting_level,
+           ri.recipe_ingredients_quantity as quantity,
+           prof.profession_name, rt.recipe_type_name,
+           pr.product_name
+    FROM recipe_ingredients ri
+    JOIN recipes r ON ri.recipe_id = r.recipe_id
+    LEFT JOIN professions prof ON r.profession_id = prof.profession_id
+    LEFT JOIN recipe_types rt ON r.recipe_type_id = rt.recipe_type_id
+    LEFT JOIN products pr ON r.product_id = pr.product_id
+    WHERE ri.ingredient_id = ?
+    ORDER BY prof.profession_name, r.recipe_crafting_level, r.recipe_name
+  `).all(ingredientId) as IngredientDetail['recipes'];
+
+  return {
+    ingredient_id: row.ingredient_id,
+    ingredient_name: row.ingredient_name,
+    ingredient_resref: row.ingredient_resref,
+    ingredient_tier: row.ingredient_tier,
+    placeable_resref: row.placeable_resref,
+    source: {
+      profession_id: row.profession_id,
+      profession_name: row.profession_name,
+      profession_type: row.profession_type,
+    },
+    biomes,
+    recipes,
+  };
+}
+
 export function createIngredient(data: { ingredient_name: string; ingredient_resref: string }, user: Express.User): number {
   ensureBackup(DB_FILE);
   const db = getManagedDb(DB_FILE);
@@ -289,8 +415,8 @@ export function deleteIngredient(ingredientId: number, user: Express.User): void
   logAudit(user.id, user.username, DB_FILE, 'ingredients', 'DELETE', { ingredient_id: ingredientId }, old as any, null);
 }
 
-export function getProfessions(): { profession_id: number; profession_name: string }[] {
-  return getManagedDb(DB_FILE).prepare('SELECT * FROM professions ORDER BY profession_name').all() as any[];
+export function getProfessions(): { profession_id: number; profession_name: string; profession_type: string }[] {
+  return getManagedDb(DB_FILE).prepare('SELECT profession_id, profession_name, profession_type FROM professions ORDER BY profession_type, profession_name').all() as any[];
 }
 
 export function getRecipeTypes(): { recipe_type_id: number; recipe_type_name: string }[] {

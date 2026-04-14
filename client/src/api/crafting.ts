@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut, apiDelete } from './client';
-import type { PaginatedResponse, Recipe, RecipeDetail, Ingredient } from '../types';
+import type { PaginatedResponse, Recipe, RecipeDetail, Ingredient, IngredientListItem, IngredientDetail } from '../types';
 
 export function getRecipes(params?: {
   profession_id?: number;
@@ -55,7 +55,25 @@ export function deleteIngredient(id: number): Promise<void> {
   return apiDelete(`/api/crafting/ingredients/${id}`);
 }
 
-export function getProfessions(): Promise<{ profession_id: number; profession_name: string }[]> {
+export function getIngredientsEnhanced(params?: {
+  search?: string;
+  profession_id?: number;
+  profession_type?: string;
+  tier?: number;
+}): Promise<IngredientListItem[]> {
+  const sp = new URLSearchParams({ enhanced: '1' });
+  if (params?.search) sp.set('search', params.search);
+  if (params?.profession_id) sp.set('profession_id', String(params.profession_id));
+  if (params?.profession_type) sp.set('profession_type', params.profession_type);
+  if (params?.tier) sp.set('tier', String(params.tier));
+  return apiGet(`/api/crafting/ingredients?${sp.toString()}`);
+}
+
+export function getIngredientDetail(id: number): Promise<IngredientDetail> {
+  return apiGet(`/api/crafting/ingredients/${id}`);
+}
+
+export function getProfessions(): Promise<{ profession_id: number; profession_name: string; profession_type?: string }[]> {
   return apiGet('/api/crafting/professions');
 }
 

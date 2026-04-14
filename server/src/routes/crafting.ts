@@ -68,7 +68,30 @@ router.delete('/recipes/:id', requireEditor, (req, res) => {
 // Ingredients
 router.get('/ingredients', requireAuth, (req, res) => {
   try {
+    // If 'enhanced' query param is set, return full ingredient list with profession/recipe info
+    if (req.query.enhanced === '1') {
+      res.json(craftingService.getIngredientsEnhanced({
+        search: req.query.search as string | undefined,
+        professionId: req.query.profession_id ? parseInt(req.query.profession_id as string, 10) : undefined,
+        professionType: req.query.profession_type as string | undefined,
+        tier: req.query.tier ? parseInt(req.query.tier as string, 10) : undefined,
+      }));
+      return;
+    }
     res.json(craftingService.getIngredients(req.query.search as string | undefined));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/ingredients/:id', requireAuth, (req, res) => {
+  try {
+    const detail = craftingService.getIngredientDetail(parseInt(p(req.params.id), 10));
+    if (!detail) {
+      res.status(404).json({ error: 'Ingredient not found' });
+      return;
+    }
+    res.json(detail);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

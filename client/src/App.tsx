@@ -8,6 +8,7 @@ import { DatabaseExplorer } from './pages/DatabaseExplorer';
 import { TableView } from './pages/TableView';
 import { LootEditor } from './pages/LootEditor';
 import { CraftingEditor } from './pages/CraftingEditor';
+import { IngredientExplorer } from './pages/IngredientExplorer';
 import { SearchResults } from './pages/SearchResults';
 import { BackupManager } from './pages/BackupManager';
 import { AuditLog } from './pages/AuditLog';
@@ -36,6 +37,7 @@ export default function App() {
               <Route path="db/:dbName/:tableName" element={<TableView />} />
               <Route path="loot" element={<LootEditor />} />
               <Route path="crafting" element={<CraftingEditor />} />
+              <Route path="ingredients" element={<IngredientExplorer />} />
               <Route path="search" element={<SearchResults />} />
 
               {/* Admin routes */}
