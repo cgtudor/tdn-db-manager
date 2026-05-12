@@ -350,7 +350,7 @@ export interface StoreSourceEntry {
   store_tag: string;
   area_name: string;
   area_resref: string;
-  item_value: number;       // engine-calculated item value (Cost field, includes AddCost)
+  item_value: number;       // calculated item gold value (engine formula)
   store_buy_price: number;  // what players pay: item_value * markup / 100
   store_markup: number;     // store MarkUp percentage
   infinite: boolean;
@@ -536,7 +536,7 @@ function findStoreEntries(resref: string): StoreSourceEntry[] {
     return moduleDb.prepare(`
       SELECT s.LocalizedName as store_name, s.Tag as store_tag,
              a.Name as area_name, a.ResRef as area_resref,
-             si.Cost as item_cost, si.AddCost as item_addcost,
+             si.CalculatedCost as item_value,
              s.MarkUp as store_markup, si.Infinite as infinite
       FROM area_store_inventory si
       JOIN area_stores s ON si.store_id = s.id
@@ -544,12 +544,7 @@ function findStoreEntries(resref: string): StoreSourceEntry[] {
       WHERE si.TemplateResRef = ?
       ORDER BY a.Name, s.LocalizedName
     `).all(resref).map((row: any) => {
-      // NWN item value: Cost is the engine-cached value which includes AddCost.
-      // For items with low BaseCost (books, kits), Cost may be ~0 and AddCost
-      // carries the real value. Use whichever is greater as the effective value.
-      const cost = row.item_cost ?? 0;
-      const addCost = row.item_addcost ?? 0;
-      const itemValue = Math.max(cost, addCost);
+      const itemValue = row.item_value ?? 0;
       const markup = row.store_markup ?? 100;
       // Store buy price = ItemValue * MarkUp / 100 (before Appraise bonuses)
       const buyPrice = Math.floor(itemValue * markup / 100);
