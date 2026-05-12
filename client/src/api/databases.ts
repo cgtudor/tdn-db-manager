@@ -12,13 +12,14 @@ export function getDatabaseDetail(db: string): Promise<DatabaseDetail> {
 export function getTableRows(
   db: string,
   table: string,
-  params?: { page?: number; limit?: number; sort?: string; order?: string; filters?: Record<string, string> }
+  params?: { page?: number; limit?: number; sort?: string; order?: string; filters?: Record<string, string>; search?: string }
 ): Promise<PaginatedResponse<Record<string, unknown>>> {
   const searchParams = new URLSearchParams();
   if (params?.page) searchParams.set('page', String(params.page));
   if (params?.limit) searchParams.set('limit', String(params.limit));
   if (params?.sort) searchParams.set('sort', params.sort);
   if (params?.order) searchParams.set('order', params.order);
+  if (params?.search) searchParams.set('search', params.search);
   if (params?.filters) {
     for (const [col, val] of Object.entries(params.filters)) {
       searchParams.set(`filter[${col}]`, val);

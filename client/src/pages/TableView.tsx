@@ -158,6 +158,7 @@ export function TableView() {
             onSort={table.toggleSort}
             onPageChange={table.setPage}
             onLimitChange={table.setLimit}
+            onFilterChange={table.handleFilterChange}
             onUpdate={async (rowid, changes) => {
               await table.updateRow({ rowid, changes });
             }}

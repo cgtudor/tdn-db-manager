@@ -9,10 +9,11 @@ export function useTable(db: string | undefined, table: string | undefined) {
   const [sort, setSort] = useState<string | undefined>();
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
   const [filters, setFilters] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState('');
 
   const query = useQuery({
-    queryKey: ['table', db, table, page, limit, sort, order, filters],
-    queryFn: () => getTableRows(db!, table!, { page, limit, sort, order, filters }),
+    queryKey: ['table', db, table, page, limit, sort, order, filters, search],
+    queryFn: () => getTableRows(db!, table!, { page, limit, sort, order, filters, search: search || undefined }),
     enabled: !!db && !!table,
   });
 
@@ -61,12 +62,18 @@ export function useTable(db: string | undefined, table: string | undefined) {
     setPage(1);
   };
 
+  const handleFilterChange = (newFilters: Record<string, string>, newSearch: string) => {
+    setFilters(newFilters);
+    setSearch(newSearch);
+    setPage(1);
+  };
+
   return {
     ...query,
     page, setPage,
     limit, setLimit,
     sort, order, toggleSort,
-    filters, setFilter,
+    filters, setFilter, handleFilterChange,
     insertRow: insertMutation.mutateAsync,
     updateRow: updateMutation.mutateAsync,
     deleteRow: deleteMutation.mutateAsync,

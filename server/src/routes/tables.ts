@@ -9,7 +9,7 @@ const router = Router();
 router.get('/:db/tables/:table', requireAuth, (req, res) => {
   try {
     const db = p(req.params.db), table = p(req.params.table);
-    const { page, limit, sort, order, ...rest } = req.query;
+    const { page, limit, sort, order, search, ...rest } = req.query;
 
     // Extract filter params (filter[column]=value)
     const filters: Record<string, string> = {};
@@ -26,6 +26,7 @@ router.get('/:db/tables/:table', requireAuth, (req, res) => {
       sort: sort as string | undefined,
       order: order === 'desc' ? 'desc' : 'asc',
       filters: Object.keys(filters).length > 0 ? filters : undefined,
+      search: search as string | undefined,
     });
 
     res.json(result);

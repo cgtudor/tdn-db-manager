@@ -4,6 +4,7 @@ import {
   GridColDef,
   GridPaginationModel,
   GridSortModel,
+  GridFilterModel,
   GridActionsCellItem,
 } from '@mui/x-data-grid';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
@@ -20,6 +21,7 @@ interface DataGridProps {
   onSort: (column: string) => void;
   onPageChange: (page: number) => void;
   onLimitChange: (limit: number) => void;
+  onFilterChange?: (filters: Record<string, string>, search: string) => void;
   onUpdate?: (rowid: number, changes: Record<string, unknown>) => Promise<void>;
   onDelete?: (rowid: number) => Promise<void>;
 }
@@ -69,7 +71,7 @@ function buildTheme(dark: boolean) {
 
 export function DataGrid({
   columns, rows, total, page, limit, canEdit,
-  onSort, onPageChange, onLimitChange, onUpdate, onDelete,
+  onSort, onPageChange, onLimitChange, onFilterChange, onUpdate, onDelete,
 }: DataGridProps) {
   const isDark = useIsDark();
   const muiTheme = useMemo(() => buildTheme(isDark), [isDark]);
@@ -131,6 +133,23 @@ export function DataGrid({
     }
   }, [onSort]);
 
+  const handleFilterChange = useCallback((model: GridFilterModel) => {
+    if (!onFilterChange) return;
+
+    // Extract column filters from filter items
+    const filters: Record<string, string> = {};
+    for (const item of model.items) {
+      if (item.field && item.value != null && item.value !== '') {
+        filters[item.field] = String(item.value);
+      }
+    }
+
+    // Extract quick filter search term
+    const search = (model.quickFilterValues ?? []).filter(Boolean).join(' ');
+
+    onFilterChange(filters, search);
+  }, [onFilterChange]);
+
   const processRowUpdate = useCallback(async (newRow: Record<string, unknown>, oldRow: Record<string, unknown>) => {
     const rowid = newRow._rowid as number;
     const changes: Record<string, unknown> = {};
@@ -160,9 +179,12 @@ export function DataGrid({
           rowCount={total}
           paginationMode="server"
           sortingMode="server"
+          filterMode="server"
           paginationModel={{ page: page - 1, pageSize: limit }}
           onPaginationModelChange={handlePaginationChange}
           onSortModelChange={handleSortChange}
+          onFilterModelChange={handleFilterChange}
+          filterDebounceMs={400}
           pageSizeOptions={[25, 50, 100, 200]}
           processRowUpdate={canEdit ? processRowUpdate : undefined}
           disableRowSelectionOnClick

@@ -10,6 +10,7 @@ interface QueryParams {
   sort?: string;
   order?: 'asc' | 'desc';
   filters?: Record<string, string>;
+  search?: string;
 }
 
 export function getRows(dbFilename: string, tableName: string, params: QueryParams): PaginatedResponse<Record<string, unknown>> {
@@ -30,6 +31,19 @@ export function getRows(dbFilename: string, tableName: string, params: QueryPara
       if (schema.columns.some(c => c.name === col)) {
         conditions.push(`"${col}" LIKE ?`);
         values.push(`%${val}%`);
+      }
+    }
+  }
+
+  // Quick filter: search across all columns
+  if (params.search) {
+    const searchableCols = schema.columns.filter(c => c.name !== '_rowid');
+    if (searchableCols.length > 0) {
+      const orClauses = searchableCols.map(c => `CAST("${c.name}" AS TEXT) LIKE ?`);
+      conditions.push(`(${orClauses.join(' OR ')})`);
+      const term = `%${params.search}%`;
+      for (let i = 0; i < searchableCols.length; i++) {
+        values.push(term);
       }
     }
   }
