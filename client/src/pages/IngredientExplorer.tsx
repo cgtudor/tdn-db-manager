@@ -32,9 +32,9 @@ export function IngredientExplorer() {
   const queryClient = useQueryClient();
   const [editingWeight, setEditingWeight] = useState<string | null>(null);
 
-  const weightMutation = useMutation({
-    mutationFn: ({ id, yield_weight }: { id: number; yield_weight: number }) =>
-      updateIngredient(id, { yield_weight }),
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Record<string, unknown> }) =>
+      updateIngredient(id, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['ingredientDetail', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['ingredientsEnhanced'] });
@@ -165,33 +165,61 @@ export function IngredientExplorer() {
               <h2 className="text-xl font-bold text-text">{detail.ingredient_name}</h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm text-text-muted font-mono">{detail.ingredient_resref}</span>
-                {detail.ingredient_tier && (
-                  <Badge>Tier {TIER_LABELS[detail.ingredient_tier] ?? detail.ingredient_tier}</Badge>
-                )}
               </div>
             </div>
 
-            {/* Source */}
+            {/* Tier & Source */}
             <section>
-              <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">Source</h3>
-              <div className="rounded-lg border border-border bg-surface p-3">
-                {detail.source.profession_name ? (
+              <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">Properties</h3>
+              <div className="rounded-lg border border-border bg-surface p-3 space-y-3">
+                {/* Tier */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-text-secondary">Tier</span>
+                  <select
+                    value={detail.ingredient_tier ?? ''}
+                    onChange={e => {
+                      const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                      updateMutation.mutate({ id: detail.ingredient_id, data: { ingredient_tier: val } });
+                    }}
+                    className="px-2 py-1 text-sm border border-border rounded bg-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="">None</option>
+                    {[1, 2, 3, 4, 5].map(t => (
+                      <option key={t} value={t}>Tier {TIER_LABELS[t]}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Profession Source */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-text-secondary">Drop Source</span>
                   <div className="flex items-center gap-2">
-                    {detail.source.profession_type === 'gathering' ? (
-                      <Pickaxe className="h-4 w-4 text-green-500" />
-                    ) : detail.source.profession_type === 'refining' ? (
-                      <Sparkles className="h-4 w-4 text-amber-500" />
-                    ) : (
-                      <FlaskConical className="h-4 w-4 text-blue-500" />
+                    {detail.source.profession_type && (
+                      detail.source.profession_type === 'gathering' ? (
+                        <Pickaxe className="h-3.5 w-3.5 text-green-500" />
+                      ) : detail.source.profession_type === 'refining' ? (
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                      ) : (
+                        <FlaskConical className="h-3.5 w-3.5 text-blue-500" />
+                      )
                     )}
-                    <span className="text-sm font-medium capitalize">{detail.source.profession_name}</span>
-                    <Badge variant={PROFESSION_TYPE_VARIANTS[detail.source.profession_type ?? ''] ?? 'default'}>
-                      {PROFESSION_TYPE_LABELS[detail.source.profession_type ?? ''] ?? 'Unknown'}
-                    </Badge>
+                    <select
+                      value={detail.source.profession_id ?? ''}
+                      onChange={e => {
+                        const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                        updateMutation.mutate({ id: detail.ingredient_id, data: { profession_id: val } });
+                      }}
+                      className="px-2 py-1 text-sm border border-border rounded bg-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    >
+                      <option value="">None (no drop source)</option>
+                      {professions?.map(p => (
+                        <option key={p.profession_id} value={p.profession_id}>
+                          {p.profession_name} ({PROFESSION_TYPE_LABELS[p.profession_type ?? ''] ?? p.profession_type})
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                ) : (
-                  <span className="text-sm text-text-muted">No profession source (base/purchased ingredient)</span>
-                )}
+                </div>
               </div>
             </section>
 
@@ -211,7 +239,7 @@ export function IngredientExplorer() {
                           e.preventDefault();
                           const val = parseFloat(editingWeight);
                           if (!isNaN(val) && val >= 0) {
-                            weightMutation.mutate({ id: detail.ingredient_id, yield_weight: val });
+                            updateMutation.mutate({ id: detail.ingredient_id, data: { yield_weight: val } });
                           }
                         }}
                       >
@@ -226,7 +254,7 @@ export function IngredientExplorer() {
                         />
                         <button
                           type="submit"
-                          disabled={weightMutation.isPending}
+                          disabled={updateMutation.isPending}
                           className="px-2 py-1 text-xs font-medium rounded bg-primary text-white hover:bg-primary/90 disabled:opacity-50"
                         >
                           Save

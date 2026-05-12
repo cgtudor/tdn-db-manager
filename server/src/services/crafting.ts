@@ -17,7 +17,10 @@ const SECONDARY_YIELD_CHANCES: Record<number, Record<number, number>> = {
 
 // Profession IDs that use secondary yield system
 const SECONDARY_YIELD_PROF_IDS = [8, 9, 10];
+// Professions that use <= tier pooling (include lower tiers in the drop pool)
+const INCLUSIVE_TIER_PROF_IDS = new Set([9, 10]);  // Mining, Skinning
 const SKINNING_PROF_ID = 10;
+const MINING_PROF_ID = 9;
 const HERBALISM_PROF_ID = 4;
 const FISHING_PROF_ID = 6;
 
@@ -377,12 +380,13 @@ function calcDropChance(db: ReturnType<typeof getManagedDb>, row: any): DropChan
   // Secondary yield system (mining, woodcutting, skinning)
   if (SECONDARY_YIELD_PROF_IDS.includes(profId)) {
     const weight = row.yield_weight ?? 1.0;
-    const isSkinning = profId === SKINNING_PROF_ID;
-    const excludeClause = isSkinning ? " AND ingredient_resref NOT LIKE 'hide_t%'" : '';
+    const usesInclusiveTiers = INCLUSIVE_TIER_PROF_IDS.has(profId);
+    // Skinning excludes primary hides from the secondary pool
+    const excludeClause = profId === SKINNING_PROF_ID ? " AND ingredient_resref NOT LIKE 'hide_t%'" : '';
 
-    // Skinning uses ingredient_tier <= @gatherTier, so the pool grows at higher tiers.
-    // Mining/woodcutting use ingredient_tier = @tier (exact match), so only the ingredient's own tier matters.
-    const gatherTiers = isSkinning
+    // Mining & skinning use ingredient_tier <= @gatherTier, so the pool grows at higher tiers.
+    // Woodcutting uses ingredient_tier = @tier (exact match), so only the ingredient's own tier matters.
+    const gatherTiers = usesInclusiveTiers
       ? [1, 2, 3, 4, 5].filter(t => t >= tier)  // only tiers at or above ingredient's tier
       : [tier];
 
@@ -390,7 +394,7 @@ function calcDropChance(db: ReturnType<typeof getManagedDb>, row: any): DropChan
 
     for (const gatherTier of gatherTiers) {
       const triggerPct = SECONDARY_YIELD_CHANCES[profId]?.[gatherTier] ?? 0;
-      const tierOp = isSkinning ? '<=' : '=';
+      const tierOp = usesInclusiveTiers ? '<=' : '=';
 
       const poolRow = db.prepare(`
         SELECT SUM(yield_weight) as total_weight, COUNT(*) as pool_size
@@ -566,7 +570,13 @@ export function createIngredient(data: { ingredient_name: string; ingredient_res
   return Number(result.lastInsertRowid);
 }
 
-export function updateIngredient(ingredientId: number, data: { ingredient_name?: string; ingredient_resref?: string; yield_weight?: number }, user: Express.User): void {
+export function updateIngredient(ingredientId: number, data: {
+  ingredient_name?: string;
+  ingredient_resref?: string;
+  yield_weight?: number;
+  ingredient_tier?: number | null;
+  profession_id?: number | null;
+}, user: Express.User): void {
   ensureBackup(DB_FILE);
   const db = getManagedDb(DB_FILE);
 
@@ -578,6 +588,8 @@ export function updateIngredient(ingredientId: number, data: { ingredient_name?:
   if (data.ingredient_name !== undefined) { fields.push('ingredient_name = ?'); values.push(data.ingredient_name); }
   if (data.ingredient_resref !== undefined) { fields.push('ingredient_resref = ?'); values.push(data.ingredient_resref); }
   if (data.yield_weight !== undefined) { fields.push('yield_weight = ?'); values.push(data.yield_weight); }
+  if ('ingredient_tier' in data) { fields.push('ingredient_tier = ?'); values.push(data.ingredient_tier); }
+  if ('profession_id' in data) { fields.push('profession_id = ?'); values.push(data.profession_id); }
 
   if (fields.length > 0) {
     db.prepare(`UPDATE ingredients SET ${fields.join(', ')} WHERE ingredient_id = ?`).run(...values, ingredientId);
