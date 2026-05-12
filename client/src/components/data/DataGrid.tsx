@@ -180,9 +180,9 @@ export function DataGrid({
           slotProps={{
             toolbar: {
               showQuickFilter: true,
-            },
-            quickFilter: {
-              debounceMs: 600,
+              quickFilterProps: {
+                debounceMs: 600,
+              },
             },
           }}
           sx={{
