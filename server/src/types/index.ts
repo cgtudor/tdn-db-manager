@@ -94,4 +94,5 @@ export interface RecipeDetail extends Recipe {
     ingredient_resref: string;
     quantity: number;
   }[];
+  store_sources: { store_name: string; store_tag: string; area_name: string; area_resref: string; item_cost: number; item_addcost: number; infinite: boolean }[];
 }

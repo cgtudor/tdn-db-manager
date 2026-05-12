@@ -90,6 +90,7 @@ export interface RecipeDetail extends Recipe {
     ingredient_resref: string;
     quantity: number;
   }[];
+  store_sources: StoreSourceEntry[];
 }
 
 export interface Ingredient {
@@ -134,8 +135,9 @@ export interface StoreSourceEntry {
   store_tag: string;
   area_name: string;
   area_resref: string;
-  item_cost: number;
-  item_addcost: number;
+  item_value: number;
+  store_buy_price: number;
+  store_markup: number;
   infinite: boolean;
 }
 

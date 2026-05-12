@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTableRows, insertRow, updateRow, deleteRow, bulkDeleteRows } from '../api/databases';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { GridFilterModel } from '@mui/x-data-grid';
 
 const EMPTY_FILTER_MODEL: GridFilterModel = { items: [] };
@@ -15,10 +15,9 @@ export function useTable(db: string | undefined, table: string | undefined) {
   // Filter model (controlled, passed to DataGrid)
   const [filterModel, setFilterModel] = useState<GridFilterModel>(EMPTY_FILTER_MODEL);
 
-  // Debounced filter values that actually drive the query
+  // Filter values that drive the query (updated when MUI fires onFilterModelChange after its own debounce)
   const [committedFilters, setCommittedFilters] = useState<Record<string, string>>({});
   const [committedSearch, setCommittedSearch] = useState('');
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const query = useQuery({
     queryKey: ['table', db, table, page, limit, sort, order, committedFilters, committedSearch],
@@ -28,6 +27,7 @@ export function useTable(db: string | undefined, table: string | undefined) {
       search: committedSearch || undefined,
     }),
     enabled: !!db && !!table,
+    placeholderData: (prev) => prev,  // keep showing old data while fetching, prevents grid flicker
   });
 
   const invalidate = () => {
@@ -68,25 +68,22 @@ export function useTable(db: string | undefined, table: string | undefined) {
   const handleFilterChange = useCallback((model: GridFilterModel) => {
     setFilterModel(model);
 
-    // Debounce the actual query update
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      const filters: Record<string, string> = {};
-      for (const item of model.items) {
-        if (item.field && item.value != null && item.value !== '') {
-          filters[item.field] = String(item.value);
-        }
+    // MUI's quick filter already debounces via slotProps.quickFilter.debounceMs,
+    // so we commit immediately when MUI fires onFilterModelChange.
+    const filters: Record<string, string> = {};
+    for (const item of model.items) {
+      if (item.field && item.value != null && item.value !== '') {
+        filters[item.field] = String(item.value);
       }
-      const search = (model.quickFilterValues ?? []).filter(Boolean).join(' ');
+    }
+    const search = (model.quickFilterValues ?? []).filter(Boolean).join(' ');
 
-      setCommittedFilters(filters);
-      setCommittedSearch(search);
-      setPage(1);
-    }, 500);
+    setCommittedFilters(filters);
+    setCommittedSearch(search);
+    setPage(1);
   }, []);
 
   const clearFilters = useCallback(() => {
-    clearTimeout(debounceRef.current);
     setFilterModel(EMPTY_FILTER_MODEL);
     setCommittedFilters({});
     setCommittedSearch('');
@@ -100,6 +97,7 @@ export function useTable(db: string | undefined, table: string | undefined) {
     page, setPage,
     limit, setLimit,
     sort, order, toggleSort,
+    isFetching: query.isFetching,
     filterModel, handleFilterChange, clearFilters, hasActiveFilters,
     insertRow: insertMutation.mutateAsync,
     updateRow: updateMutation.mutateAsync,

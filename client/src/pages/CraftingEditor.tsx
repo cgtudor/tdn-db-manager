@@ -366,6 +366,50 @@ export function CraftingEditor() {
                 )}
               </div>
             </div>
+
+            {/* Sold In Stores */}
+            {recipeDetail.store_sources?.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-text mb-2 uppercase tracking-wider">
+                  Product Sold In ({recipeDetail.store_sources.length})
+                </h3>
+                <div className="border border-border rounded-lg bg-surface overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-surface-dim border-b border-border">
+                        <th className="text-left px-3 py-2 font-medium text-text-secondary">Store</th>
+                        <th className="text-left px-3 py-2 font-medium text-text-secondary">Area</th>
+                        <th className="text-right px-3 py-2 font-medium text-text-secondary">Cost</th>
+                        <th className="text-center px-3 py-2 font-medium text-text-secondary">Stock</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recipeDetail.store_sources.map((ss, idx) => (
+                        <tr key={`${ss.store_tag}_${ss.area_resref}_${idx}`} className="border-b border-border last:border-0 hover:bg-surface-hover">
+                          <td className="px-3 py-1.5">
+                            <div className="font-medium">{ss.store_name}</div>
+                            <div className="text-xs text-text-muted font-mono">{ss.store_tag}</div>
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <div>{ss.area_name}</div>
+                            <div className="text-xs text-text-muted font-mono">{ss.area_resref}</div>
+                          </td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">
+                            <div>{ss.store_buy_price.toLocaleString()} gp</div>
+                            {ss.store_markup !== 100 && (
+                              <div className="text-[10px] text-text-muted">{ss.store_markup}% markup</div>
+                            )}
+                          </td>
+                          <td className="px-3 py-1.5 text-center">
+                            <Badge variant={ss.infinite ? 'success' : 'warning'}>{ss.infinite ? 'Infinite' : 'Limited'}</Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

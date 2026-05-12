@@ -105,10 +105,13 @@ export function getRecipeDetail(recipeId: number): RecipeDetail | null {
     ORDER BY i.ingredient_name
   `).all(recipeId) as RecipeDetail['ingredients'];
 
+  const productResref = product?.product_resref ?? '';
+
   return {
     ...recipe,
     product: product || { product_id: 0, product_name: '', product_resref: '', product_quantity: 1, product_effects: null, product_description: null },
     ingredients,
+    store_sources: productResref ? findStoreEntries(productResref) : [],
   };
 }
 
@@ -347,8 +350,9 @@ export interface StoreSourceEntry {
   store_tag: string;
   area_name: string;
   area_resref: string;
-  item_cost: number;
-  item_addcost: number;
+  item_value: number;       // engine-calculated item value (Cost field, includes AddCost)
+  store_buy_price: number;  // what players pay: item_value * markup / 100
+  store_markup: number;     // store MarkUp percentage
   infinite: boolean;
 }
 
@@ -532,21 +536,35 @@ function findStoreEntries(resref: string): StoreSourceEntry[] {
     return moduleDb.prepare(`
       SELECT s.LocalizedName as store_name, s.Tag as store_tag,
              a.Name as area_name, a.ResRef as area_resref,
-             si.Cost as item_cost, si.AddCost as item_addcost, si.Infinite as infinite
+             si.Cost as item_cost, si.AddCost as item_addcost,
+             s.MarkUp as store_markup, si.Infinite as infinite
       FROM area_store_inventory si
       JOIN area_stores s ON si.store_id = s.id
       JOIN areas a ON s.area_id = a.id
       WHERE si.TemplateResRef = ?
       ORDER BY a.Name, s.LocalizedName
-    `).all(resref).map((row: any) => ({
-      store_name: row.store_name ?? '',
-      store_tag: row.store_tag ?? '',
-      area_name: row.area_name ?? '',
-      area_resref: row.area_resref ?? '',
-      item_cost: row.item_cost ?? 0,
-      item_addcost: row.item_addcost ?? 0,
-      infinite: (row.infinite ?? 0) === 1,
-    }));
+    `).all(resref).map((row: any) => {
+      // NWN item value: Cost is the engine-cached value which includes AddCost.
+      // For items with low BaseCost (books, kits), Cost may be ~0 and AddCost
+      // carries the real value. Use whichever is greater as the effective value.
+      const cost = row.item_cost ?? 0;
+      const addCost = row.item_addcost ?? 0;
+      const itemValue = Math.max(cost, addCost);
+      const markup = row.store_markup ?? 100;
+      // Store buy price = ItemValue * MarkUp / 100 (before Appraise bonuses)
+      const buyPrice = Math.floor(itemValue * markup / 100);
+
+      return {
+        store_name: row.store_name ?? '',
+        store_tag: row.store_tag ?? '',
+        area_name: row.area_name ?? '',
+        area_resref: row.area_resref ?? '',
+        item_value: itemValue,
+        store_buy_price: buyPrice,
+        store_markup: markup,
+        infinite: (row.infinite ?? 0) === 1,
+      };
+    });
   } catch {
     // Tables might not exist yet (db_module not regenerated)
     return [];

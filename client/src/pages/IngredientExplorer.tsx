@@ -361,7 +361,10 @@ export function IngredientExplorer() {
                             <div className="text-xs text-text-muted font-mono">{ss.area_resref}</div>
                           </td>
                           <td className="px-3 py-1.5 text-right tabular-nums">
-                            {ss.item_addcost > 0 ? ss.item_addcost.toLocaleString() : ss.item_cost.toLocaleString()} gp
+                            <div>{ss.store_buy_price.toLocaleString()} gp</div>
+                            {ss.store_markup !== 100 && (
+                              <div className="text-[10px] text-text-muted">{ss.store_markup}% markup</div>
+                            )}
                           </td>
                           <td className="px-3 py-1.5 text-center">
                             {ss.infinite ? (

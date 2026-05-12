@@ -17,6 +17,7 @@ interface DataGridProps {
   total: number;
   page: number;
   limit: number;
+  loading?: boolean;
   canEdit?: boolean;
   filterModel?: GridFilterModel;
   onSort: (column: string) => void;
@@ -71,7 +72,7 @@ function buildTheme(dark: boolean) {
 }
 
 export function DataGrid({
-  columns, rows, total, page, limit, canEdit, filterModel,
+  columns, rows, total, page, limit, loading, canEdit, filterModel,
   onSort, onPageChange, onLimitChange, onFilterModelChange, onUpdate, onDelete,
 }: DataGridProps) {
   const isDark = useIsDark();
@@ -169,12 +170,21 @@ export function DataGrid({
           onSortModelChange={handleSortChange}
           filterModel={filterModel}
           onFilterModelChange={onFilterModelChange}
+          loading={loading}
           pageSizeOptions={[25, 50, 100, 200]}
           processRowUpdate={canEdit ? processRowUpdate : undefined}
           disableRowSelectionOnClick
           density="compact"
           autoHeight={false}
           showToolbar
+          slotProps={{
+            toolbar: {
+              showQuickFilter: true,
+            },
+            quickFilter: {
+              debounceMs: 600,
+            },
+          }}
           sx={{
             height: '100%',
             border: 'none',

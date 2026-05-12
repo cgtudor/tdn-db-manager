@@ -161,6 +161,7 @@ export function TableView() {
             page={table.page}
             limit={table.limit}
             canEdit={hasWriteAccess}
+            loading={table.isFetching}
             filterModel={table.filterModel}
             onSort={table.toggleSort}
             onPageChange={table.setPage}
