@@ -17,9 +17,8 @@ const SECONDARY_YIELD_CHANCES: Record<number, Record<number, number>> = {
 
 // Profession IDs that use secondary yield system
 const SECONDARY_YIELD_PROF_IDS = [8, 9, 10];
-// Herbalism prof_id
+const SKINNING_PROF_ID = 10;
 const HERBALISM_PROF_ID = 4;
-// Fishing prof_id
 const FISHING_PROF_ID = 6;
 
 const LOOT_CATEGORIES = ['weapon', 'armor', 'clothing', 'jewlery', 'misc', 'shield', 'ammo', 'crafting', 'recipe'] as const;
@@ -315,12 +314,19 @@ export function getIngredientsEnhanced(params: {
   `).all(...values) as IngredientListItem[];
 }
 
+export interface SecondaryYieldTierInfo {
+  gather_tier: number;           // the tier being gathered (e.g. skinning a T3 creature)
+  secondary_trigger_pct: number; // % chance secondary yield triggers
+  pool_weight_pct: number;       // % chance of selection from pool
+  pool_size: number;             // ingredients in the pool at this gather tier
+  overall_pct: number;           // trigger × selection = per-gather %
+}
+
 export interface DropChanceInfo {
   // For secondary yield ingredients (mining/woodcutting/skinning)
-  secondary_yield_pct: number | null;  // % chance per gather to get this as secondary
-  pool_weight_pct: number | null;      // % chance of being selected from pool (if secondary triggers)
-  secondary_trigger_pct: number | null; // % chance secondary yield triggers at this tier
-  pool_size: number | null;            // number of ingredients in the pool
+  // Mining/woodcutting: single entry (exact tier match)
+  // Skinning: multiple entries (pool uses <= tier, so higher gather tiers include more)
+  secondary_yield: SecondaryYieldTierInfo[] | null;
   // For herbalism biome-based drops
   biome_drop_pcts: { biome_name: string; pct: number }[] | null;
   // For fishing
@@ -359,6 +365,10 @@ export interface IngredientDetail {
   loot_tables: LootTableEntry[];
 }
 
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 function calcDropChance(db: ReturnType<typeof getManagedDb>, row: any): DropChanceInfo | null {
   const profId = row.profession_id as number | null;
   const tier = row.ingredient_tier as number | null;
@@ -366,30 +376,47 @@ function calcDropChance(db: ReturnType<typeof getManagedDb>, row: any): DropChan
 
   // Secondary yield system (mining, woodcutting, skinning)
   if (SECONDARY_YIELD_PROF_IDS.includes(profId)) {
-    const triggerPct = SECONDARY_YIELD_CHANCES[profId]?.[tier] ?? 0;
-
-    // Skinning excludes hide_t% from the pool
-    const excludeClause = profId === 10 ? " AND ingredient_resref NOT LIKE 'hide_t%'" : '';
-
-    const poolRow = db.prepare(`
-      SELECT SUM(yield_weight) as total_weight, COUNT(*) as pool_size
-      FROM ingredients
-      WHERE profession_id = ? AND ingredient_tier = ?${excludeClause}
-    `).get(profId, tier) as { total_weight: number | null; pool_size: number };
-
-    const totalWeight = poolRow.total_weight ?? 0;
     const weight = row.yield_weight ?? 1.0;
+    const isSkinning = profId === SKINNING_PROF_ID;
+    const excludeClause = isSkinning ? " AND ingredient_resref NOT LIKE 'hide_t%'" : '';
 
-    if (totalWeight <= 0) return null;
+    // Skinning uses ingredient_tier <= @gatherTier, so the pool grows at higher tiers.
+    // Mining/woodcutting use ingredient_tier = @tier (exact match), so only the ingredient's own tier matters.
+    const gatherTiers = isSkinning
+      ? [1, 2, 3, 4, 5].filter(t => t >= tier)  // only tiers at or above ingredient's tier
+      : [tier];
 
-    const poolPct = (weight / totalWeight) * 100;
-    const overallPct = (triggerPct / 100) * (weight / totalWeight) * 100;
+    const entries: SecondaryYieldTierInfo[] = [];
+
+    for (const gatherTier of gatherTiers) {
+      const triggerPct = SECONDARY_YIELD_CHANCES[profId]?.[gatherTier] ?? 0;
+      const tierOp = isSkinning ? '<=' : '=';
+
+      const poolRow = db.prepare(`
+        SELECT SUM(yield_weight) as total_weight, COUNT(*) as pool_size
+        FROM ingredients
+        WHERE profession_id = ? AND ingredient_tier ${tierOp} ?${excludeClause}
+      `).get(profId, gatherTier) as { total_weight: number | null; pool_size: number };
+
+      const totalWeight = poolRow.total_weight ?? 0;
+      if (totalWeight <= 0) continue;
+
+      const poolPct = (weight / totalWeight) * 100;
+      const overallPct = (triggerPct / 100) * poolPct;
+
+      entries.push({
+        gather_tier: gatherTier,
+        secondary_trigger_pct: triggerPct,
+        pool_weight_pct: round2(poolPct),
+        pool_size: poolRow.pool_size,
+        overall_pct: round2(overallPct),
+      });
+    }
+
+    if (entries.length === 0) return null;
 
     return {
-      secondary_yield_pct: Math.round(overallPct * 100) / 100,
-      pool_weight_pct: Math.round(poolPct * 100) / 100,
-      secondary_trigger_pct: triggerPct,
-      pool_size: poolRow.pool_size,
+      secondary_yield: entries,
       biome_drop_pcts: null,
       fishing_drop_pcts: null,
     };
@@ -416,10 +443,7 @@ function calcDropChance(db: ReturnType<typeof getManagedDb>, row: any): DropChan
       }));
 
     return {
-      secondary_yield_pct: null,
-      pool_weight_pct: null,
-      secondary_trigger_pct: null,
-      pool_size: null,
+      secondary_yield: null,
       biome_drop_pcts: biomePcts.length > 0 ? biomePcts : null,
       fishing_drop_pcts: null,
     };
@@ -442,14 +466,11 @@ function calcDropChance(db: ReturnType<typeof getManagedDb>, row: any): DropChan
       .filter(b => b.pool_size > 0)
       .map(b => ({
         biome_name: b.biome_name,
-        pct: Math.round((1 / b.pool_size) * 100 * 100) / 100,
+        pct: round2((1 / b.pool_size) * 100),
       }));
 
     return {
-      secondary_yield_pct: null,
-      pool_weight_pct: null,
-      secondary_trigger_pct: null,
-      pool_size: null,
+      secondary_yield: null,
       biome_drop_pcts: null,
       fishing_drop_pcts: fishPcts.length > 0 ? fishPcts : null,
     };

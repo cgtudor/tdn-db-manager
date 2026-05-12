@@ -405,11 +405,13 @@ function IngredientRow({ ingredient, isSelected, onClick }: {
 }
 
 function DropChanceSection({ dropChance }: { dropChance: DropChanceInfo }) {
-  const hasSecondary = dropChance.secondary_yield_pct !== null;
+  const hasSecondary = dropChance.secondary_yield !== null && dropChance.secondary_yield.length > 0;
   const hasBiome = dropChance.biome_drop_pcts !== null && dropChance.biome_drop_pcts.length > 0;
   const hasFishing = dropChance.fishing_drop_pcts !== null && dropChance.fishing_drop_pcts.length > 0;
 
   if (!hasSecondary && !hasBiome && !hasFishing) return null;
+
+  const isSingleTier = hasSecondary && dropChance.secondary_yield!.length === 1;
 
   return (
     <section>
@@ -418,21 +420,55 @@ function DropChanceSection({ dropChance }: { dropChance: DropChanceInfo }) {
         Drop Chance
       </h3>
       <div className="rounded-lg border border-border bg-surface p-3 space-y-3">
-        {/* Secondary yield (mining/woodcutting/skinning) */}
-        {hasSecondary && (
-          <div>
-            <div className="flex items-center gap-3 mb-2">
+        {/* Secondary yield — single tier (mining/woodcutting) */}
+        {hasSecondary && isSingleTier && (() => {
+          const entry = dropChance.secondary_yield![0];
+          return (
+            <div className="flex items-center gap-3">
               <div className="text-center">
-                <div className="text-lg font-bold tabular-nums">{dropChance.secondary_yield_pct}%</div>
+                <div className="text-lg font-bold tabular-nums">{entry.overall_pct}%</div>
                 <div className="text-[10px] text-text-muted">per gather</div>
               </div>
               <div className="text-xs text-text-muted leading-relaxed">
-                = <span className="font-medium text-text">{dropChance.secondary_trigger_pct}%</span> secondary trigger
+                = <span className="font-medium text-text">{entry.secondary_trigger_pct}%</span> secondary trigger
                 {' '}&times;{' '}
-                <span className="font-medium text-text">{dropChance.pool_weight_pct}%</span> selection from pool
-                {' '}({dropChance.pool_size} ingredients)
+                <span className="font-medium text-text">{entry.pool_weight_pct}%</span> selection from pool
+                {' '}({entry.pool_size} ingredients)
               </div>
             </div>
+          );
+        })()}
+
+        {/* Secondary yield — multi-tier (skinning) */}
+        {hasSecondary && !isSingleTier && (
+          <div>
+            <div className="text-xs font-medium text-text-secondary mb-2">
+              Drop chance varies by creature tier (pool includes all ingredients up to that tier)
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-text-muted">
+                  <th className="pb-1 font-medium">Gather Tier</th>
+                  <th className="pb-1 font-medium text-right">Trigger</th>
+                  <th className="pb-1 font-medium text-right">Selection</th>
+                  <th className="pb-1 font-medium text-right">Pool</th>
+                  <th className="pb-1 font-medium text-right">Overall</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {dropChance.secondary_yield!.map(entry => (
+                  <tr key={entry.gather_tier}>
+                    <td className="py-1 font-medium">Tier {TIER_LABELS[entry.gather_tier]}</td>
+                    <td className="py-1 text-right text-text-muted">{entry.secondary_trigger_pct}%</td>
+                    <td className="py-1 text-right text-text-muted">{entry.pool_weight_pct}%</td>
+                    <td className="py-1 text-right text-text-muted">{entry.pool_size}</td>
+                    <td className="py-1 text-right">
+                      <span className="font-bold tabular-nums">{entry.overall_pct}%</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 

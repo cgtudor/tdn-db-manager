@@ -110,11 +110,16 @@ export interface IngredientListItem {
   recipe_count: number;
 }
 
+export interface SecondaryYieldTierInfo {
+  gather_tier: number;
+  secondary_trigger_pct: number;
+  pool_weight_pct: number;
+  pool_size: number;
+  overall_pct: number;
+}
+
 export interface DropChanceInfo {
-  secondary_yield_pct: number | null;
-  pool_weight_pct: number | null;
-  secondary_trigger_pct: number | null;
-  pool_size: number | null;
+  secondary_yield: SecondaryYieldTierInfo[] | null;
   biome_drop_pcts: { biome_name: string; pct: number }[] | null;
   fishing_drop_pcts: { biome_name: string; pct: number }[] | null;
 }
