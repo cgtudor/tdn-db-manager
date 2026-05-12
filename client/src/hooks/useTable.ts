@@ -18,7 +18,7 @@ export function useTable(db: string | undefined, table: string | undefined) {
   // Debounced filter values that actually drive the query
   const [committedFilters, setCommittedFilters] = useState<Record<string, string>>({});
   const [committedSearch, setCommittedSearch] = useState('');
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const query = useQuery({
     queryKey: ['table', db, table, page, limit, sort, order, committedFilters, committedSearch],
