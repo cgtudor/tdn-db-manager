@@ -5,7 +5,7 @@ import { Badge } from '../components/ui/Badge';
 import { Select } from '../components/ui/Select';
 import { Loading } from '../components/shared/Loading';
 import { EmptyState } from '../components/shared/EmptyState';
-import { Search, Leaf, X, FlaskConical, Pickaxe, Sparkles, MapPin, ChevronRight, Weight, Percent, Package } from 'lucide-react';
+import { Search, Leaf, X, FlaskConical, Pickaxe, Sparkles, MapPin, ChevronRight, Weight, Percent, Package, Store } from 'lucide-react';
 import type { IngredientListItem, DropChanceInfo } from '../types';
 
 const PROFESSION_TYPE_LABELS: Record<string, string> = {
@@ -328,6 +328,52 @@ export function IngredientExplorer() {
                       <Badge>{lt.tier.toUpperCase()}</Badge>
                     </div>
                   ))}
+                </div>
+              </section>
+            )}
+
+            {/* Sold In Stores */}
+            {detail.store_sources.length > 0 && (
+              <section>
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
+                  <Store className="h-3.5 w-3.5 inline mr-1" />
+                  Sold In ({detail.store_sources.length})
+                </h3>
+                <div className="rounded-lg border border-border bg-surface overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-surface-dim text-text-secondary text-left">
+                        <th className="px-3 py-2 font-medium">Store</th>
+                        <th className="px-3 py-2 font-medium">Area</th>
+                        <th className="px-3 py-2 font-medium text-right">Cost</th>
+                        <th className="px-3 py-2 font-medium text-center">Stock</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {detail.store_sources.map((ss, idx) => (
+                        <tr key={`${ss.store_tag}_${ss.area_resref}_${idx}`} className="hover:bg-surface-hover">
+                          <td className="px-3 py-1.5">
+                            <div className="font-medium">{ss.store_name}</div>
+                            <div className="text-xs text-text-muted font-mono">{ss.store_tag}</div>
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <div>{ss.area_name}</div>
+                            <div className="text-xs text-text-muted font-mono">{ss.area_resref}</div>
+                          </td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">
+                            {ss.item_addcost > 0 ? ss.item_addcost.toLocaleString() : ss.item_cost.toLocaleString()} gp
+                          </td>
+                          <td className="px-3 py-1.5 text-center">
+                            {ss.infinite ? (
+                              <Badge variant="success">Infinite</Badge>
+                            ) : (
+                              <Badge variant="warning">Limited</Badge>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </section>
             )}

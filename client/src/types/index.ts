@@ -129,6 +129,16 @@ export interface LootTableEntry {
   tier: string;
 }
 
+export interface StoreSourceEntry {
+  store_name: string;
+  store_tag: string;
+  area_name: string;
+  area_resref: string;
+  item_cost: number;
+  item_addcost: number;
+  infinite: boolean;
+}
+
 export interface IngredientDetail {
   ingredient_id: number;
   ingredient_name: string;
@@ -154,6 +164,7 @@ export interface IngredientDetail {
   }[];
   drop_chance: DropChanceInfo | null;
   loot_tables: LootTableEntry[];
+  store_sources: StoreSourceEntry[];
 }
 
 export interface AuditEntry {

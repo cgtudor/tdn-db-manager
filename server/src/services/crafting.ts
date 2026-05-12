@@ -26,6 +26,7 @@ const FISHING_PROF_ID = 6;
 
 const LOOT_CATEGORIES = ['weapon', 'armor', 'clothing', 'jewlery', 'misc', 'shield', 'ammo', 'crafting', 'recipe'] as const;
 const LOOT_TIERS = ['a', 'b', 'c', 'cplus', 'd', 'e'] as const;
+const MODULE_DB_FILE = 'db_module.sqlite3';
 
 export function getRecipes(params: {
   professionId?: number;
@@ -341,6 +342,16 @@ export interface LootTableEntry {
   tier: string;
 }
 
+export interface StoreSourceEntry {
+  store_name: string;
+  store_tag: string;
+  area_name: string;
+  area_resref: string;
+  item_cost: number;
+  item_addcost: number;
+  infinite: boolean;
+}
+
 export interface IngredientDetail {
   ingredient_id: number;
   ingredient_name: string;
@@ -366,6 +377,7 @@ export interface IngredientDetail {
   }[];
   drop_chance: DropChanceInfo | null;
   loot_tables: LootTableEntry[];
+  store_sources: StoreSourceEntry[];
 }
 
 function round2(n: number): number {
@@ -508,6 +520,39 @@ function findLootTableEntries(resref: string): LootTableEntry[] {
   return entries;
 }
 
+function findStoreEntries(resref: string): StoreSourceEntry[] {
+  let moduleDb: ReturnType<typeof getManagedDb>;
+  try {
+    moduleDb = getManagedDb(MODULE_DB_FILE);
+  } catch {
+    return [];
+  }
+
+  try {
+    return moduleDb.prepare(`
+      SELECT s.LocalizedName as store_name, s.Tag as store_tag,
+             a.Name as area_name, a.ResRef as area_resref,
+             si.Cost as item_cost, si.AddCost as item_addcost, si.Infinite as infinite
+      FROM area_store_inventory si
+      JOIN area_stores s ON si.store_id = s.id
+      JOIN areas a ON s.area_id = a.id
+      WHERE si.TemplateResRef = ?
+      ORDER BY a.Name, s.LocalizedName
+    `).all(resref).map((row: any) => ({
+      store_name: row.store_name ?? '',
+      store_tag: row.store_tag ?? '',
+      area_name: row.area_name ?? '',
+      area_resref: row.area_resref ?? '',
+      item_cost: row.item_cost ?? 0,
+      item_addcost: row.item_addcost ?? 0,
+      infinite: (row.infinite ?? 0) === 1,
+    }));
+  } catch {
+    // Tables might not exist yet (db_module not regenerated)
+    return [];
+  }
+}
+
 export function getIngredientDetail(ingredientId: number): IngredientDetail | null {
   const db = getManagedDb(DB_FILE);
 
@@ -558,6 +603,7 @@ export function getIngredientDetail(ingredientId: number): IngredientDetail | nu
     recipes,
     drop_chance: calcDropChance(db, row),
     loot_tables: findLootTableEntries(row.ingredient_resref),
+    store_sources: findStoreEntries(row.ingredient_resref),
   };
 }
 
