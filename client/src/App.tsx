@@ -9,6 +9,7 @@ import { TableView } from './pages/TableView';
 import { LootEditor } from './pages/LootEditor';
 import { CraftingEditor } from './pages/CraftingEditor';
 import { IngredientExplorer } from './pages/IngredientExplorer';
+import { StoreExplorer } from './pages/StoreExplorer';
 import { SearchResults } from './pages/SearchResults';
 import { BackupManager } from './pages/BackupManager';
 import { AuditLog } from './pages/AuditLog';
@@ -38,6 +39,7 @@ export default function App() {
               <Route path="loot" element={<LootEditor />} />
               <Route path="crafting" element={<CraftingEditor />} />
               <Route path="ingredients" element={<IngredientExplorer />} />
+              <Route path="stores" element={<StoreExplorer />} />
               <Route path="search" element={<SearchResults />} />
 
               {/* Admin routes */}
