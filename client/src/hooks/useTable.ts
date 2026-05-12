@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTableRows, insertRow, updateRow, deleteRow, bulkDeleteRows } from '../api/databases';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import type { GridFilterModel } from '@mui/x-data-grid';
+
+const EMPTY_FILTER_MODEL: GridFilterModel = { items: [] };
 
 export function useTable(db: string | undefined, table: string | undefined) {
   const queryClient = useQueryClient();
@@ -8,12 +11,22 @@ export function useTable(db: string | undefined, table: string | undefined) {
   const [limit, setLimit] = useState(50);
   const [sort, setSort] = useState<string | undefined>();
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
-  const [filters, setFilters] = useState<Record<string, string>>({});
-  const [search, setSearch] = useState('');
+
+  // Filter model (controlled, passed to DataGrid)
+  const [filterModel, setFilterModel] = useState<GridFilterModel>(EMPTY_FILTER_MODEL);
+
+  // Debounced filter values that actually drive the query
+  const [committedFilters, setCommittedFilters] = useState<Record<string, string>>({});
+  const [committedSearch, setCommittedSearch] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const query = useQuery({
-    queryKey: ['table', db, table, page, limit, sort, order, filters, search],
-    queryFn: () => getTableRows(db!, table!, { page, limit, sort, order, filters, search: search || undefined }),
+    queryKey: ['table', db, table, page, limit, sort, order, committedFilters, committedSearch],
+    queryFn: () => getTableRows(db!, table!, {
+      page, limit, sort, order,
+      filters: committedFilters,
+      search: committedSearch || undefined,
+    }),
     enabled: !!db && !!table,
   });
 
@@ -52,28 +65,42 @@ export function useTable(db: string | undefined, table: string | undefined) {
     setPage(1);
   };
 
-  const setFilter = (column: string, value: string) => {
-    setFilters(prev => {
-      const next = { ...prev };
-      if (value) next[column] = value;
-      else delete next[column];
-      return next;
-    });
-    setPage(1);
-  };
+  const handleFilterChange = useCallback((model: GridFilterModel) => {
+    setFilterModel(model);
 
-  const handleFilterChange = (newFilters: Record<string, string>, newSearch: string) => {
-    setFilters(newFilters);
-    setSearch(newSearch);
+    // Debounce the actual query update
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const filters: Record<string, string> = {};
+      for (const item of model.items) {
+        if (item.field && item.value != null && item.value !== '') {
+          filters[item.field] = String(item.value);
+        }
+      }
+      const search = (model.quickFilterValues ?? []).filter(Boolean).join(' ');
+
+      setCommittedFilters(filters);
+      setCommittedSearch(search);
+      setPage(1);
+    }, 500);
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    clearTimeout(debounceRef.current);
+    setFilterModel(EMPTY_FILTER_MODEL);
+    setCommittedFilters({});
+    setCommittedSearch('');
     setPage(1);
-  };
+  }, []);
+
+  const hasActiveFilters = committedSearch !== '' || Object.keys(committedFilters).length > 0;
 
   return {
     ...query,
     page, setPage,
     limit, setLimit,
     sort, order, toggleSort,
-    filters, setFilter, handleFilterChange,
+    filterModel, handleFilterChange, clearFilters, hasActiveFilters,
     insertRow: insertMutation.mutateAsync,
     updateRow: updateMutation.mutateAsync,
     deleteRow: deleteMutation.mutateAsync,

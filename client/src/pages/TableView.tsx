@@ -3,7 +3,7 @@ import { useTable } from '../hooks/useTable';
 import { useDatabaseDetail } from '../hooks/useDatabases';
 import { useAuth } from '../hooks/useAuth';
 import { DataGrid } from '../components/data/DataGrid';
-import { ArrowLeft, Download, Plus } from 'lucide-react';
+import { ArrowLeft, Download, Plus, XCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Loading } from '../components/shared/Loading';
 import { Badge } from '../components/ui/Badge';
@@ -130,6 +130,12 @@ export function TableView() {
           {table.data && (
             <span className="text-sm text-text-muted">{table.data.total.toLocaleString()} rows</span>
           )}
+          {table.hasActiveFilters && (
+            <Button variant="secondary" size="sm" onClick={table.clearFilters}>
+              <XCircle className="h-3.5 w-3.5" />
+              Clear Filters
+            </Button>
+          )}
           {hasWriteAccess && (
             <Button variant="primary" size="sm" onClick={() => setShowAddRow(true)}>
               <Plus className="h-3.5 w-3.5" />
@@ -155,10 +161,11 @@ export function TableView() {
             page={table.page}
             limit={table.limit}
             canEdit={hasWriteAccess}
+            filterModel={table.filterModel}
             onSort={table.toggleSort}
             onPageChange={table.setPage}
             onLimitChange={table.setLimit}
-            onFilterChange={table.handleFilterChange}
+            onFilterModelChange={table.handleFilterChange}
             onUpdate={async (rowid, changes) => {
               await table.updateRow({ rowid, changes });
             }}
