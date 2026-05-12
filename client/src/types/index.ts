@@ -110,6 +110,20 @@ export interface IngredientListItem {
   recipe_count: number;
 }
 
+export interface DropChanceInfo {
+  secondary_yield_pct: number | null;
+  pool_weight_pct: number | null;
+  secondary_trigger_pct: number | null;
+  pool_size: number | null;
+  biome_drop_pcts: { biome_name: string; pct: number }[] | null;
+  fishing_drop_pcts: { biome_name: string; pct: number }[] | null;
+}
+
+export interface LootTableEntry {
+  category: string;
+  tier: string;
+}
+
 export interface IngredientDetail {
   ingredient_id: number;
   ingredient_name: string;
@@ -133,6 +147,8 @@ export interface IngredientDetail {
     quantity: number;
     product_name: string;
   }[];
+  drop_chance: DropChanceInfo | null;
+  loot_tables: LootTableEntry[];
 }
 
 export interface AuditEntry {

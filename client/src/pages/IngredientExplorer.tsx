@@ -5,8 +5,8 @@ import { Badge } from '../components/ui/Badge';
 import { Select } from '../components/ui/Select';
 import { Loading } from '../components/shared/Loading';
 import { EmptyState } from '../components/shared/EmptyState';
-import { Search, Leaf, X, FlaskConical, Pickaxe, Sparkles, MapPin, ChevronRight, Weight } from 'lucide-react';
-import type { IngredientListItem } from '../types';
+import { Search, Leaf, X, FlaskConical, Pickaxe, Sparkles, MapPin, ChevronRight, Weight, Percent, Package } from 'lucide-react';
+import type { IngredientListItem, DropChanceInfo } from '../types';
 
 const PROFESSION_TYPE_LABELS: Record<string, string> = {
   gathering: 'Gathered',
@@ -283,6 +283,27 @@ export function IngredientExplorer() {
               </section>
             )}
 
+            {/* Drop Chance */}
+            {detail.drop_chance && <DropChanceSection dropChance={detail.drop_chance} />}
+
+            {/* Loot Tables */}
+            {detail.loot_tables.length > 0 && (
+              <section>
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
+                  <Package className="h-3.5 w-3.5 inline mr-1" />
+                  Loot Tables
+                </h3>
+                <div className="rounded-lg border border-border bg-surface divide-y divide-border">
+                  {detail.loot_tables.map(lt => (
+                    <div key={`${lt.category}_${lt.tier}`} className="flex items-center gap-2 px-3 py-2">
+                      <span className="text-sm font-medium capitalize">{lt.category}</span>
+                      <Badge>{lt.tier.toUpperCase()}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Recipes */}
             <section>
               <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
@@ -380,5 +401,85 @@ function IngredientRow({ ingredient, isSelected, onClick }: {
         )}
       </div>
     </button>
+  );
+}
+
+function DropChanceSection({ dropChance }: { dropChance: DropChanceInfo }) {
+  const hasSecondary = dropChance.secondary_yield_pct !== null;
+  const hasBiome = dropChance.biome_drop_pcts !== null && dropChance.biome_drop_pcts.length > 0;
+  const hasFishing = dropChance.fishing_drop_pcts !== null && dropChance.fishing_drop_pcts.length > 0;
+
+  if (!hasSecondary && !hasBiome && !hasFishing) return null;
+
+  return (
+    <section>
+      <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
+        <Percent className="h-3.5 w-3.5 inline mr-1" />
+        Drop Chance
+      </h3>
+      <div className="rounded-lg border border-border bg-surface p-3 space-y-3">
+        {/* Secondary yield (mining/woodcutting/skinning) */}
+        {hasSecondary && (
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="text-center">
+                <div className="text-lg font-bold tabular-nums">{dropChance.secondary_yield_pct}%</div>
+                <div className="text-[10px] text-text-muted">per gather</div>
+              </div>
+              <div className="text-xs text-text-muted leading-relaxed">
+                = <span className="font-medium text-text">{dropChance.secondary_trigger_pct}%</span> secondary trigger
+                {' '}&times;{' '}
+                <span className="font-medium text-text">{dropChance.pool_weight_pct}%</span> selection from pool
+                {' '}({dropChance.pool_size} ingredients)
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Herbalism biome drops */}
+        {hasBiome && (
+          <div>
+            <div className="text-xs font-medium text-text-secondary mb-1.5">Spawn chance per biome (when herb spawns at this tier)</div>
+            <div className="space-y-1">
+              {dropChance.biome_drop_pcts!.map(b => (
+                <div key={b.biome_name} className="flex items-center justify-between">
+                  <span className="text-sm capitalize">{b.biome_name.replace(/_/g, ' ')}</span>
+                  <PercentBar pct={b.pct} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Fishing biome drops */}
+        {hasFishing && (
+          <div>
+            <div className="text-xs font-medium text-text-secondary mb-1.5">Catch chance per biome (flat random)</div>
+            <div className="space-y-1">
+              {dropChance.fishing_drop_pcts!.map(b => (
+                <div key={b.biome_name} className="flex items-center justify-between">
+                  <span className="text-sm capitalize">{b.biome_name.replace(/_/g, ' ')}</span>
+                  <PercentBar pct={b.pct} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PercentBar({ pct }: { pct: number }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="w-24 h-1.5 rounded-full bg-border overflow-hidden">
+        <div
+          className={`h-full rounded-full ${pct >= 50 ? 'bg-green-500' : pct >= 20 ? 'bg-amber-500' : 'bg-red-400'}`}
+          style={{ width: `${Math.min(pct, 100)}%` }}
+        />
+      </div>
+      <span className="text-xs font-medium tabular-nums w-12 text-right">{pct}%</span>
+    </div>
   );
 }
