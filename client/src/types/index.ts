@@ -103,6 +103,7 @@ export interface IngredientListItem {
   ingredient_name: string;
   ingredient_resref: string;
   ingredient_tier: number | null;
+  yield_weight: number;
   profession_id: number | null;
   profession_name: string | null;
   profession_type: string | null;
@@ -114,6 +115,7 @@ export interface IngredientDetail {
   ingredient_name: string;
   ingredient_resref: string;
   ingredient_tier: number | null;
+  yield_weight: number;
   placeable_resref: string | null;
   source: {
     profession_id: number | null;

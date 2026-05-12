@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getIngredientsEnhanced, getIngredientDetail, getProfessions } from '../api/crafting';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { getIngredientsEnhanced, getIngredientDetail, getProfessions, updateIngredient } from '../api/crafting';
 import { Badge } from '../components/ui/Badge';
 import { Select } from '../components/ui/Select';
 import { Loading } from '../components/shared/Loading';
 import { EmptyState } from '../components/shared/EmptyState';
-import { Search, Leaf, X, FlaskConical, Pickaxe, Sparkles, MapPin, ChevronRight } from 'lucide-react';
+import { Search, Leaf, X, FlaskConical, Pickaxe, Sparkles, MapPin, ChevronRight, Weight } from 'lucide-react';
 import type { IngredientListItem } from '../types';
 
 const PROFESSION_TYPE_LABELS: Record<string, string> = {
@@ -28,6 +28,19 @@ export function IngredientExplorer() {
   const [professionId, setProfessionId] = useState<number | undefined>();
   const [tier, setTier] = useState<number | undefined>();
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  const queryClient = useQueryClient();
+  const [editingWeight, setEditingWeight] = useState<string | null>(null);
+
+  const weightMutation = useMutation({
+    mutationFn: ({ id, yield_weight }: { id: number; yield_weight: number }) =>
+      updateIngredient(id, { yield_weight }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ingredientDetail', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['ingredientsEnhanced'] });
+      setEditingWeight(null);
+    },
+  });
 
   const { data: professions } = useQuery({
     queryKey: ['professions'],
@@ -182,6 +195,69 @@ export function IngredientExplorer() {
               </div>
             </section>
 
+            {/* Drop Weight */}
+            {detail.source.profession_type === 'gathering' && (
+              <section>
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
+                  <Weight className="h-3.5 w-3.5 inline mr-1" />
+                  Drop Chance Weight
+                </h3>
+                <div className="rounded-lg border border-border bg-surface p-3">
+                  <div className="flex items-center gap-3">
+                    {editingWeight !== null && selectedId === detail.ingredient_id ? (
+                      <form
+                        className="flex items-center gap-2"
+                        onSubmit={e => {
+                          e.preventDefault();
+                          const val = parseFloat(editingWeight);
+                          if (!isNaN(val) && val >= 0) {
+                            weightMutation.mutate({ id: detail.ingredient_id, yield_weight: val });
+                          }
+                        }}
+                      >
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={editingWeight}
+                          onChange={e => setEditingWeight(e.target.value)}
+                          className="w-24 px-2 py-1 text-sm border border-border rounded bg-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          disabled={weightMutation.isPending}
+                          className="px-2 py-1 text-xs font-medium rounded bg-primary text-white hover:bg-primary/90 disabled:opacity-50"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingWeight(null)}
+                          className="px-2 py-1 text-xs font-medium rounded border border-border hover:bg-surface-hover"
+                        >
+                          Cancel
+                        </button>
+                      </form>
+                    ) : (
+                      <>
+                        <span className="text-lg font-bold tabular-nums">{detail.yield_weight}</span>
+                        <button
+                          onClick={() => setEditingWeight(String(detail.yield_weight))}
+                          className="px-2 py-1 text-xs font-medium rounded border border-border hover:bg-surface-hover"
+                        >
+                          Edit
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-xs text-text-muted mt-1.5">
+                    Relative weight for secondary yield drops. Default is 1.0 — higher values make this ingredient more likely to drop.
+                  </p>
+                </div>
+              </section>
+            )}
+
             {/* Biomes */}
             {detail.biomes.length > 0 && (
               <section>
@@ -281,6 +357,9 @@ function IngredientRow({ ingredient, isSelected, onClick }: {
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium truncate">{ingredient.ingredient_name}</span>
         <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+          {ingredient.yield_weight !== 1.0 && (
+            <Badge variant="warning" className="text-[10px] !px-1">w:{ingredient.yield_weight}</Badge>
+          )}
           {ingredient.ingredient_tier && (
             <span className="text-[10px] text-text-muted">{TIER_LABELS[ingredient.ingredient_tier]}</span>
           )}

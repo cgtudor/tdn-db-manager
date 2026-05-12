@@ -247,6 +247,7 @@ export interface IngredientListItem {
   ingredient_name: string;
   ingredient_resref: string;
   ingredient_tier: number | null;
+  yield_weight: number;
   profession_id: number | null;
   profession_name: string | null;
   profession_type: string | null;
@@ -285,7 +286,7 @@ export function getIngredientsEnhanced(params: {
 
   return db.prepare(`
     SELECT i.ingredient_id, i.ingredient_name, i.ingredient_resref, i.ingredient_tier,
-           i.profession_id, p.profession_name, p.profession_type,
+           i.yield_weight, i.profession_id, p.profession_name, p.profession_type,
            (SELECT COUNT(*) FROM recipe_ingredients ri WHERE ri.ingredient_id = i.ingredient_id) as recipe_count
     FROM ingredients i
     LEFT JOIN professions p ON i.profession_id = p.profession_id
@@ -299,6 +300,7 @@ export interface IngredientDetail {
   ingredient_name: string;
   ingredient_resref: string;
   ingredient_tier: number | null;
+  yield_weight: number;
   placeable_resref: string | null;
   source: {
     profession_id: number | null;
@@ -357,6 +359,7 @@ export function getIngredientDetail(ingredientId: number): IngredientDetail | nu
     ingredient_name: row.ingredient_name,
     ingredient_resref: row.ingredient_resref,
     ingredient_tier: row.ingredient_tier,
+    yield_weight: row.yield_weight ?? 1.0,
     placeable_resref: row.placeable_resref,
     source: {
       profession_id: row.profession_id,
@@ -377,7 +380,7 @@ export function createIngredient(data: { ingredient_name: string; ingredient_res
   return Number(result.lastInsertRowid);
 }
 
-export function updateIngredient(ingredientId: number, data: { ingredient_name?: string; ingredient_resref?: string }, user: Express.User): void {
+export function updateIngredient(ingredientId: number, data: { ingredient_name?: string; ingredient_resref?: string; yield_weight?: number }, user: Express.User): void {
   ensureBackup(DB_FILE);
   const db = getManagedDb(DB_FILE);
 
@@ -388,6 +391,7 @@ export function updateIngredient(ingredientId: number, data: { ingredient_name?:
   const values: unknown[] = [];
   if (data.ingredient_name !== undefined) { fields.push('ingredient_name = ?'); values.push(data.ingredient_name); }
   if (data.ingredient_resref !== undefined) { fields.push('ingredient_resref = ?'); values.push(data.ingredient_resref); }
+  if (data.yield_weight !== undefined) { fields.push('yield_weight = ?'); values.push(data.yield_weight); }
 
   if (fields.length > 0) {
     db.prepare(`UPDATE ingredients SET ${fields.join(', ')} WHERE ingredient_id = ?`).run(...values, ingredientId);
