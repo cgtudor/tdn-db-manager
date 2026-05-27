@@ -74,7 +74,7 @@ function DailyChart({ data }: { data: { date: string; totalVisits: number }[] })
         </h3>
         <span className="text-xs text-text-muted">{totalVisits.toLocaleString()} total</span>
       </div>
-      <div className="flex items-end gap-px h-32">
+      <div className="flex items-end gap-px h-32 border-b border-border/50">
         {visibleData.map((d, i) => {
           const height = (d.totalVisits / max) * 100;
           const isToday = i === visibleData.length - 1;
@@ -84,8 +84,8 @@ function DailyChart({ data }: { data: { date: string; totalVisits: number }[] })
               className="flex-1 flex flex-col items-center justify-end group relative min-w-[3px]"
             >
               <div
-                className={`w-full rounded-t transition-colors ${isToday ? 'bg-primary' : 'bg-primary/50 group-hover:bg-primary/70'}`}
-                style={{ height: `${Math.max(height, d.totalVisits > 0 ? 4 : 0)}%` }}
+                className={`w-full rounded-t transition-colors ${isToday ? 'bg-indigo-400' : 'bg-indigo-500/70 group-hover:bg-indigo-400'}`}
+                style={{ height: `${Math.max(height, d.totalVisits > 0 ? 6 : 0)}%` }}
               />
               <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
                 <div className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
