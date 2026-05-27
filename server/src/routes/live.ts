@@ -110,6 +110,22 @@ router.get('/chat/history', requireDM, async (req: Request, res: Response) => {
   }
 });
 
+router.get('/chat/before', requireDM, async (req: Request, res: Response) => {
+  try {
+    const area = (req.query.area as string) || '_all';
+    const beforeId = req.query.before as string;
+    const count = parseInt((req.query.count as string) || '50', 10);
+    if (!beforeId) {
+      res.status(400).json({ error: 'before parameter required' });
+      return;
+    }
+    const messages = await redisService.getChatHistoryBefore(area, beforeId, Math.min(count, 200));
+    res.json(messages);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/feed/history', requireDM, async (req: Request, res: Response) => {
   try {
     const count = parseInt((req.query.count as string) || '50', 10);

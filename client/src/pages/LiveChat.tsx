@@ -34,7 +34,7 @@ export function LiveChat() {
   const [showWhisper, setShowWhisper] = useState(true);
   const [showDM, setShowDM] = useState(true);
 
-  const { messages, connected, clearMessages } = useChatStream(area);
+  const { messages, connected, clearMessages, loadOlder, loadingOlder, hasOlder } = useChatStream(area);
   const { areas } = useLiveOverview();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -56,12 +56,17 @@ export function LiveChat() {
     }
   }, [messages, autoScroll]);
 
-  // Detect manual scroll to disable auto-scroll
+  // Detect manual scroll to disable auto-scroll + load older at top
   const handleScroll = () => {
     if (!chatContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
     const atBottom = scrollHeight - scrollTop - clientHeight < 50;
     setAutoScroll(atBottom);
+
+    // Load older messages when scrolled near the top
+    if (scrollTop < 100 && hasOlder && !loadingOlder) {
+      loadOlder();
+    }
   };
 
   const filteredMessages = messages.filter((m) => {
@@ -162,6 +167,13 @@ export function LiveChat() {
           </div>
         ) : (
           <div className="space-y-0.5">
+            {/* Load older indicator */}
+            {loadingOlder && (
+              <div className="text-center text-xs text-text-muted py-2">Loading older messages...</div>
+            )}
+            {!hasOlder && messages.length > 0 && (
+              <div className="text-center text-xs text-text-muted py-2">— Beginning of history —</div>
+            )}
             {filteredMessages.map((msg) => (
               <div key={msg.id} className="flex gap-2 py-0.5 hover:bg-surface-hover rounded px-1 -mx-1 flex-wrap sm:flex-nowrap">
                 <span className="text-text-muted text-xs tabular-nums flex-shrink-0 pt-0.5 w-16">

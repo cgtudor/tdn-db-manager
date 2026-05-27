@@ -57,28 +57,36 @@ function MiniBar({ value, max, className = '' }: { value: number; max: number; c
 }
 
 function DailyChart({ data }: { data: { date: string; totalVisits: number }[] }) {
-  const max = Math.max(...data.map(d => d.totalVisits), 1);
+  // Only show days from the first day that has data
+  const firstDataIdx = data.findIndex(d => d.totalVisits > 0);
+  const visibleData = firstDataIdx >= 0 ? data.slice(firstDataIdx) : data;
+  const max = Math.max(...visibleData.map(d => d.totalVisits), 1);
+  const totalVisits = visibleData.reduce((s, d) => s + d.totalVisits, 0);
+
+  if (totalVisits === 0) return null;
 
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
-      <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
-        <Calendar className="h-3.5 w-3.5 inline mr-1" />
-        Daily Area Transitions (30 Days)
-      </h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+          <Calendar className="h-3.5 w-3.5 inline mr-1" />
+          Daily Area Transitions
+        </h3>
+        <span className="text-xs text-text-muted">{totalVisits.toLocaleString()} total</span>
+      </div>
       <div className="flex items-end gap-px h-32">
-        {data.map((d, i) => {
-          const height = max > 0 ? (d.totalVisits / max) * 100 : 0;
-          const isToday = i === data.length - 1;
+        {visibleData.map((d, i) => {
+          const height = (d.totalVisits / max) * 100;
+          const isToday = i === visibleData.length - 1;
           return (
             <div
               key={d.date}
-              className="flex-1 flex flex-col items-center justify-end group relative"
+              className="flex-1 flex flex-col items-center justify-end group relative min-w-[3px]"
             >
               <div
                 className={`w-full rounded-t transition-colors ${isToday ? 'bg-primary' : 'bg-primary/50 group-hover:bg-primary/70'}`}
-                style={{ height: `${Math.max(height, d.totalVisits > 0 ? 2 : 0)}%` }}
+                style={{ height: `${Math.max(height, d.totalVisits > 0 ? 4 : 0)}%` }}
               />
-              {/* Tooltip */}
               <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
                 <div className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
                   {d.date}: {d.totalVisits.toLocaleString()} visits
@@ -89,7 +97,7 @@ function DailyChart({ data }: { data: { date: string; totalVisits: number }[] })
         })}
       </div>
       <div className="flex justify-between mt-1 text-[10px] text-text-muted">
-        <span>{data[0]?.date}</span>
+        <span>{visibleData[0]?.date}</span>
         <span>Today</span>
       </div>
     </div>

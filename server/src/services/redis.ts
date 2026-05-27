@@ -278,7 +278,7 @@ function parseStreamEntry(entry: [string, string[]]): ChatMessage {
 
 /**
  * Read recent chat messages from a stream (non-blocking).
- * Use lastId = '0-0' to get all messages, or a specific ID to get messages after it.
+ * Returns messages in chronological order (oldest first).
  */
 export async function getChatHistory(areaTag: string, count: number = 50): Promise<ChatMessage[]> {
   const redis = getRedisClient();
@@ -286,6 +286,25 @@ export async function getChatHistory(areaTag: string, count: number = 50): Promi
 
   // XREVRANGE gets newest first, then we reverse for chronological order
   const entries = await redis.xrevrange(key, '+', '-', 'COUNT', count);
+  return entries.map((e) => parseStreamEntry(e as [string, string[]])).reverse();
+}
+
+/**
+ * Read older messages before a given stream ID.
+ * Returns messages in chronological order (oldest first).
+ */
+export async function getChatHistoryBefore(areaTag: string, beforeId: string, count: number = 50): Promise<ChatMessage[]> {
+  const redis = getRedisClient();
+  const key = areaTag === '_all' ? 'tdn:chat:_all' : `tdn:chat:${areaTag}`;
+
+  // XREVRANGE from just before the given ID to the beginning
+  // Decrement the sequence to exclude the beforeId itself
+  const parts = beforeId.split('-');
+  const ts = parts[0];
+  const seq = parseInt(parts[1] || '0', 10);
+  const exclusiveEnd = seq > 0 ? `${ts}-${seq - 1}` : `${parseInt(ts, 10) - 1}`;
+
+  const entries = await redis.xrevrange(key, exclusiveEnd, '-', 'COUNT', count);
   return entries.map((e) => parseStreamEntry(e as [string, string[]])).reverse();
 }
 

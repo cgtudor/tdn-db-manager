@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import * as liveApi from '../api/live';
 import type { OnlinePlayer, AreaPopulation, ServerStatus, ChatMessage, ActivityEvent } from '../types';
@@ -54,21 +54,26 @@ export function useLiveOverview() {
 export function useChatStream(area: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [connected, setConnected] = useState(false);
-  const messagesRef = useRef(messages);
-  messagesRef.current = messages;
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasOlder, setHasOlder] = useState(true);
 
-  const clearMessages = useCallback(() => setMessages([]), []);
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    setHasOlder(true);
+  }, []);
 
   // Load history when area changes
   useEffect(() => {
     setMessages([]);
     setConnected(false);
+    setHasOlder(true);
 
     let cancelled = false;
     liveApi.getChatHistory(area, 100).then((history) => {
       if (!cancelled) {
         setMessages(history);
         if (history.length > 0) setConnected(true);
+        if (history.length < 100) setHasOlder(false);
       }
     }).catch(() => {});
 
@@ -88,7 +93,23 @@ export function useChatStream(area: string) {
     return cleanup;
   }, [area]);
 
-  return { messages, connected, clearMessages };
+  const loadOlder = useCallback(async () => {
+    if (loadingOlder || !hasOlder) return;
+    setLoadingOlder(true);
+    try {
+      const oldestId = messages[0]?.id;
+      if (!oldestId) { setLoadingOlder(false); return; }
+      const older = await liveApi.getChatBefore(area, oldestId, 50);
+      if (older.length === 0) {
+        setHasOlder(false);
+      } else {
+        setMessages((prev) => [...older, ...prev]);
+      }
+    } catch {}
+    setLoadingOlder(false);
+  }, [area, messages, loadingOlder, hasOlder]);
+
+  return { messages, connected, clearMessages, loadOlder, loadingOlder, hasOlder };
 }
 
 /**

@@ -17,6 +17,10 @@ export function getChatHistory(area: string = '_all', count: number = 100): Prom
   return apiGet(`/api/live/chat/history?area=${encodeURIComponent(area)}&count=${count}`);
 }
 
+export function getChatBefore(area: string, beforeId: string, count: number = 50): Promise<ChatMessage[]> {
+  return apiGet(`/api/live/chat/before?area=${encodeURIComponent(area)}&before=${encodeURIComponent(beforeId)}&count=${count}`);
+}
+
 export interface AreaAnalytics {
   areaTag: string;
   areaName: string;
