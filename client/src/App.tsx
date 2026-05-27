@@ -14,6 +14,9 @@ import { SearchResults } from './pages/SearchResults';
 import { BackupManager } from './pages/BackupManager';
 import { AuditLog } from './pages/AuditLog';
 import { UserManager } from './pages/UserManager';
+import { LiveDashboard } from './pages/LiveDashboard';
+import { LiveChat } from './pages/LiveChat';
+import { LiveFeed } from './pages/LiveFeed';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,6 +43,9 @@ export default function App() {
               <Route path="crafting" element={<CraftingEditor />} />
               <Route path="ingredients" element={<IngredientExplorer />} />
               <Route path="stores" element={<StoreExplorer />} />
+              <Route path="live" element={<LiveDashboard />} />
+              <Route path="live/chat" element={<LiveChat />} />
+              <Route path="live/feed" element={<LiveFeed />} />
               <Route path="search" element={<SearchResults />} />
 
               {/* Admin routes */}

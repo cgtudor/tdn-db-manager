@@ -17,6 +17,7 @@ import backupRoutes from './routes/backups';
 import auditRoutes from './routes/audit';
 import userRoutes from './routes/users';
 import storeRoutes from './routes/stores';
+import liveRoutes from './routes/live';
 
 export function createApp() {
   const app = express();
@@ -75,6 +76,7 @@ export function createApp() {
   app.use('/api/audit', auditRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/stores', storeRoutes);
+  app.use('/api/live', liveRoutes);
 
   // Serve static frontend in production
   const staticPath = path.join(__dirname, '../../client/dist');

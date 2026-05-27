@@ -36,4 +36,9 @@ export const config = {
     retentionDays: parseInt(process.env.BACKUP_RETENTION_DAYS || '30', 10),
     debounceSeconds: parseInt(process.env.BACKUP_DEBOUNCE_SECONDS || '60', 10),
   },
+
+  redis: {
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+  },
 };

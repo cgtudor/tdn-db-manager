@@ -5,7 +5,8 @@ import { useTheme } from '../../hooks/useTheme';
 import {
   LayoutDashboard, Swords, FlaskConical, Leaf, Store, Database,
   Shield, ClipboardList, Users, ChevronDown, ChevronRight, LogOut, Search,
-  Sun, Moon, Monitor
+  Sun, Moon, Monitor,
+  Activity, MessageSquare, Radio,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -51,6 +52,16 @@ export function Sidebar() {
         <SidebarLink to="/ingredients" icon={Leaf}>Ingredients</SidebarLink>
         <SidebarLink to="/stores" icon={Store}>Stores</SidebarLink>
         <SidebarLink to="/search" icon={Search}>Search</SidebarLink>
+
+        {/* Live Server */}
+        <div className="pt-3">
+          <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-muted">
+            Live Server
+          </div>
+          <SidebarLink to="/live" icon={Activity}>Overview</SidebarLink>
+          <SidebarLink to="/live/chat" icon={MessageSquare}>Area Chat</SidebarLink>
+          <SidebarLink to="/live/feed" icon={Radio}>Activity Feed</SidebarLink>
+        </div>
 
         {/* Database list */}
         <div className="pt-3">

@@ -206,3 +206,53 @@ export interface SearchResult {
   value: string;
   rowid: number;
 }
+
+// ─── Live Dashboard Types ──────────────────────────────────
+
+export interface ServerStatus {
+  playerCount: number;
+  lastHeartbeat: number;
+  redisConnected: boolean;
+}
+
+export interface OnlinePlayer {
+  uuid: string;
+  name: string;
+  player: string;
+  area: string;
+  areaTag: string;
+  hp: string;
+  level: number;
+  loginTime: number;
+}
+
+export interface AreaPopulation {
+  areaTag: string;
+  playerCount: number;
+  players: { uuid: string; name: string }[];
+}
+
+export interface ChatMessage {
+  id: string;
+  speaker: string;
+  channel: string;
+  msg: string;
+  areaTag: string;
+  areaName: string;
+  ts: number;
+}
+
+export interface ActivityEvent {
+  id: string;
+  type: string;
+  player: string;
+  detail: string;
+  area?: string;
+  ts: number;
+}
+
+export interface PlayerStreamData {
+  players: OnlinePlayer[];
+  areas: AreaPopulation[];
+  status: ServerStatus;
+}
