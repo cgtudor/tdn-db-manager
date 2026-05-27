@@ -31,13 +31,17 @@ function heatTextColor(value: number, max: number): string {
   return 'text-text';
 }
 
-/** Extract a region prefix from an area tag (e.g. "dan_mrn" from "dan_mrn_dogalehouse") */
-function getRegion(tag: string): string {
-  // Common patterns: prefix_region_specific or prefix_specific
-  const parts = tag.split('_');
-  if (parts.length >= 3) return parts.slice(0, 2).join('_');
-  if (parts.length === 2) return parts[0];
-  return tag;
+/** Extract region from area display name (e.g. "Murann" from "Murann: Arbas Square - The Low Dog Alehouse") */
+function getRegion(area: AreaAnalytics): string {
+  const name = area.areaName;
+  if (name.includes(':')) return name.split(':')[0].trim();
+  return 'Other';
+}
+
+/** Get the short area name (part after the colon, or the full name if no colon) */
+function getShortName(name: string): string {
+  if (name.includes(':')) return name.split(':').slice(1).join(':').trim();
+  return name;
 }
 
 function MiniBar({ value, max, className = '' }: { value: number; max: number; className?: string }) {
@@ -96,11 +100,10 @@ function HeatmapGrid({ areas, timeRange }: { areas: AreaAnalytics[]; timeRange: 
   const grouped = useMemo(() => {
     const groups: Record<string, AreaAnalytics[]> = {};
     for (const a of areas) {
-      const region = getRegion(a.areaTag);
+      const region = getRegion(a);
       if (!groups[region]) groups[region] = [];
       groups[region].push(a);
     }
-    // Sort regions by total activity descending
     return Object.entries(groups)
       .map(([region, items]) => ({
         region,
@@ -117,8 +120,8 @@ function HeatmapGrid({ areas, timeRange }: { areas: AreaAnalytics[]; timeRange: 
       {grouped.map(({ region, items, total }) => (
         <div key={region}>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider font-mono">{region}</span>
-            <span className="text-[10px] text-text-muted">({total.toLocaleString()} visits)</span>
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">{region}</span>
+            <span className="text-[10px] text-text-muted">({items.length} areas, {total.toLocaleString()} visits)</span>
           </div>
           <div className="flex flex-wrap gap-1">
             {items.map((a) => {
@@ -131,7 +134,7 @@ function HeatmapGrid({ areas, timeRange }: { areas: AreaAnalytics[]; timeRange: 
                     transition-all hover:ring-1 hover:ring-primary/50 group relative`}
                   title={`${a.areaName}\n${a.areaTag}\n${val.toLocaleString()} visits`}
                 >
-                  <div className="font-medium truncate max-w-24">{a.areaName.split(':').pop()?.split('-').pop()?.trim() || a.areaTag}</div>
+                  <div className="font-medium truncate max-w-32">{getShortName(a.areaName) || a.areaTag}</div>
                   <div className="tabular-nums">{val.toLocaleString()}</div>
                 </div>
               );

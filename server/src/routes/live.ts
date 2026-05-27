@@ -46,6 +46,27 @@ router.get('/areas/:tag/players', requireDM, async (req: Request, res: Response)
   }
 });
 
+router.get('/analytics/debug', requireDM, async (_req: Request, res: Response) => {
+  try {
+    const redis = redisService.getRedisClient();
+    const nowDayIndex = Math.floor(Date.now() / 1000 / 86400);
+    const todayKey = `tdn:area_visits:${nowDayIndex}`;
+    const allTime = await redis.hlen('tdn:area_visits');
+    const todayData = await redis.hgetall(todayKey);
+    const keys = await redis.keys('tdn:area_visits:*');
+    res.json({
+      nowDayIndex,
+      todayKey,
+      allTimeEntries: allTime,
+      todayEntries: Object.keys(todayData).length,
+      todaySample: Object.entries(todayData).slice(0, 5),
+      allVisitKeys: keys.sort(),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/analytics/areas', requireDM, async (_req: Request, res: Response) => {
   try {
     const areas = await redisService.getAreaAnalytics();
