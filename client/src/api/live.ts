@@ -1,4 +1,4 @@
-import { apiGet } from './client';
+import { apiGet, apiPost, apiDelete } from './client';
 import type { ServerStatus, OnlinePlayer, AreaPopulation, ChatMessage, ActivityEvent } from '../types';
 
 export function getServerStatus(): Promise<ServerStatus> {
@@ -15,6 +15,10 @@ export function getAreaPopulations(): Promise<AreaPopulation[]> {
 
 export function getChatHistory(area: string = '_all', count: number = 100): Promise<ChatMessage[]> {
   return apiGet(`/api/live/chat/history?area=${encodeURIComponent(area)}&count=${count}`);
+}
+
+export function searchChat(area: string, query: string, count: number = 100): Promise<ChatMessage[]> {
+  return apiGet(`/api/live/chat/search?area=${encodeURIComponent(area)}&q=${encodeURIComponent(query)}&count=${count}`);
 }
 
 export function getChatBefore(area: string, beforeId: string, count: number = 50): Promise<ChatMessage[]> {
@@ -42,6 +46,40 @@ export function getAreaAnalytics(): Promise<AreaAnalytics[]> {
 
 export function getDailyHistory(days: number = 30): Promise<DailyHistory[]> {
   return apiGet(`/api/live/analytics/daily?days=${days}`);
+}
+
+export interface PlayerSessionSummary {
+  totalPlaytime: number;
+  sessions: { login: number; logout: number; duration: number; name: string }[];
+  currentSessionStart: number | null;
+  todayPlaytime: number;
+  weekPlaytime: number;
+}
+
+export function getPlayerSessions(uuid: string): Promise<PlayerSessionSummary> {
+  return apiGet(`/api/live/sessions/${encodeURIComponent(uuid)}`);
+}
+
+export interface DMNote {
+  id: number;
+  player_uuid: string;
+  character_name: string;
+  note: string;
+  author_discord_id: string;
+  author_username: string;
+  created_at: string;
+}
+
+export function getPlayerNotes(uuid: string): Promise<DMNote[]> {
+  return apiGet(`/api/live/notes/${encodeURIComponent(uuid)}`);
+}
+
+export function addPlayerNote(uuid: string, note: string, characterName: string): Promise<DMNote> {
+  return apiPost(`/api/live/notes/${encodeURIComponent(uuid)}`, { note, characterName });
+}
+
+export function deletePlayerNote(uuid: string, noteId: number): Promise<void> {
+  return apiDelete(`/api/live/notes/${encodeURIComponent(uuid)}/${noteId}`);
 }
 
 export function getCharacterInfo(uuid: string): Promise<Record<string, any>> {

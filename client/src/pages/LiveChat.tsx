@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useChatStream, useLiveOverview } from '../hooks/useLive';
+import { searchChat } from '../api/live';
 import { Badge } from '../components/ui/Badge';
 import { Select } from '../components/ui/Select';
-import { MessageSquare, Wifi, WifiOff, Trash2, ArrowDown } from 'lucide-react';
+import { MessageSquare, Wifi, WifiOff, Trash2, ArrowDown, Search, X, Loader2 } from 'lucide-react';
+import type { ChatMessage } from '../types';
 
 function formatTime(ts: number): string {
   const d = new Date(ts * 1000);
@@ -33,6 +35,9 @@ export function LiveChat() {
   const [showShout, setShowShout] = useState(true);
   const [showWhisper, setShowWhisper] = useState(true);
   const [showDM, setShowDM] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<ChatMessage[] | null>(null);
+  const [searching, setSearching] = useState(false);
 
   const { messages, connected, clearMessages, loadOlder, loadingOlder, hasOlder } = useChatStream(area);
   const { areas } = useLiveOverview();
@@ -76,6 +81,10 @@ export function LiveChat() {
     if (m.channel === 'DM' && !showDM) return false;
     return true;
   });
+
+  // When searching, show search results; otherwise show live filtered messages
+  const displayMessages = searchResults !== null ? searchResults : filteredMessages;
+  const isSearchMode = searchResults !== null;
 
   const areaOptions = [
     { value: '_all', label: 'All Areas' },
@@ -154,27 +163,66 @@ export function LiveChat() {
         </div>
       </div>
 
+      {/* Search bar */}
+      <div className="px-4 py-2 border-b border-border flex items-center gap-2">
+        <Search className="h-3.5 w-3.5 text-text-muted flex-shrink-0" />
+        <input
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            if (e.target.value === '') setSearchResults(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && searchQuery.length >= 2) {
+              setSearching(true);
+              searchChat(area, searchQuery).then((results) => {
+                setSearchResults(results);
+                setSearching(false);
+              }).catch(() => setSearching(false));
+            }
+          }}
+          placeholder="Search messages... (Enter to search)"
+          className="flex-1 text-sm bg-transparent border-none outline-none text-text placeholder:text-text-muted"
+        />
+        {searching && <Loader2 className="h-3.5 w-3.5 text-text-muted animate-spin" />}
+        {searchResults !== null && (
+          <>
+            <Badge>{searchResults.length} results</Badge>
+            <button
+              onClick={() => { setSearchQuery(''); setSearchResults(null); }}
+              className="p-1 rounded hover:bg-surface-hover text-text-muted hover:text-text"
+              title="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
+      </div>
+
       {/* Chat messages */}
       <div
         ref={chatContainerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto px-4 py-2 font-mono text-sm"
       >
-        {filteredMessages.length === 0 ? (
+        {displayMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-text-muted text-sm">
             <MessageSquare className="h-5 w-5 mr-2" />
-            {connected ? 'Waiting for messages...' : 'Connecting...'}
+            {isSearchMode ? 'No messages match your search' : connected ? 'Waiting for messages...' : 'Connecting...'}
           </div>
         ) : (
           <div className="space-y-0.5">
-            {/* Load older indicator */}
-            {loadingOlder && (
+            {/* Load older indicator (only in live mode) */}
+            {!isSearchMode && loadingOlder && (
               <div className="text-center text-xs text-text-muted py-2">Loading older messages...</div>
             )}
-            {!hasOlder && messages.length > 0 && (
+            {!isSearchMode && !hasOlder && messages.length > 0 && (
               <div className="text-center text-xs text-text-muted py-2">— Beginning of history —</div>
             )}
-            {filteredMessages.map((msg) => (
+            {isSearchMode && (
+              <div className="text-center text-xs text-text-muted py-2">— Search results for "{searchQuery}" —</div>
+            )}
+            {displayMessages.map((msg) => (
               <div key={msg.id} className="flex gap-2 py-0.5 hover:bg-surface-hover rounded px-1 -mx-1 flex-wrap sm:flex-nowrap">
                 <span className="text-text-muted text-xs tabular-nums flex-shrink-0 pt-0.5 w-16">
                   {formatTime(msg.ts)}

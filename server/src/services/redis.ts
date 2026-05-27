@@ -134,6 +134,69 @@ export async function getAreaPlayers(areaTag: string): Promise<{ uuid: string; n
   return Object.entries(data).map(([uuid, name]) => ({ uuid, name }));
 }
 
+// ─── Player Sessions ────────────────────────────────────────
+
+export interface PlayerSession {
+  login: number;
+  logout: number;
+  duration: number;
+  name: string;
+}
+
+export interface PlayerSessionSummary {
+  totalPlaytime: number;
+  sessions: PlayerSession[];
+  currentSessionStart: number | null;
+  todayPlaytime: number;
+  weekPlaytime: number;
+}
+
+export async function getPlayerSessions(uuid: string): Promise<PlayerSessionSummary> {
+  const redis = getRedisClient();
+
+  const [totalStr, activeStart, sessionsRaw] = await Promise.all([
+    redis.hget('tdn:playtime', uuid),
+    redis.hget('tdn:session_start', uuid),
+    // Get the 20 most recent sessions (highest score = most recent)
+    redis.zrevrange('tdn:sessions:' + uuid, 0, 19),
+  ]);
+
+  const totalPlaytime = parseInt(totalStr || '0', 10);
+  const currentSessionStart = activeStart ? parseInt(activeStart, 10) : null;
+
+  const sessions: PlayerSession[] = sessionsRaw.map((raw) => {
+    try { return JSON.parse(raw); } catch { return null; }
+  }).filter(Boolean);
+
+  // Calculate today and week playtime from recent sessions
+  const nowTs = Math.floor(Date.now() / 1000);
+  const todayStart = Math.floor(nowTs / 86400) * 86400;
+  const weekStart = todayStart - 6 * 86400;
+
+  let todayPlaytime = 0;
+  let weekPlaytime = 0;
+
+  for (const s of sessions) {
+    if (s.logout >= todayStart) {
+      const effectiveStart = Math.max(s.login, todayStart);
+      todayPlaytime += s.logout - effectiveStart;
+    }
+    if (s.logout >= weekStart) {
+      const effectiveStart = Math.max(s.login, weekStart);
+      weekPlaytime += s.logout - effectiveStart;
+    }
+  }
+
+  // Add current session time if online
+  if (currentSessionStart) {
+    const activeTime = nowTs - currentSessionStart;
+    if (currentSessionStart >= todayStart) todayPlaytime += activeTime;
+    if (currentSessionStart >= weekStart) weekPlaytime += activeTime;
+  }
+
+  return { totalPlaytime, sessions, currentSessionStart, todayPlaytime, weekPlaytime };
+}
+
 // ─── Character Info ─────────────────────────────────────────
 
 export async function getCharacterInfo(uuid: string): Promise<Record<string, any> | null> {
@@ -306,6 +369,53 @@ export async function getChatHistoryBefore(areaTag: string, beforeId: string, co
 
   const entries = await redis.xrevrange(key, exclusiveEnd, '-', 'COUNT', count);
   return entries.map((e) => parseStreamEntry(e as [string, string[]])).reverse();
+}
+
+/**
+ * Search chat history by speaker name or message text.
+ * Scans the stream and filters in-memory (Redis streams don't support server-side text search).
+ */
+export async function searchChat(
+  areaTag: string,
+  query: string,
+  count: number = 100
+): Promise<ChatMessage[]> {
+  const redis = getRedisClient();
+  const key = areaTag === '_all' ? 'tdn:chat:_all' : `tdn:chat:${areaTag}`;
+  const lowerQuery = query.toLowerCase();
+
+  // Scan backwards through the stream in batches until we find enough matches
+  const results: ChatMessage[] = [];
+  let endId = '+';
+  const batchSize = 200;
+  const maxScanned = 5000; // safety limit
+  let scanned = 0;
+
+  while (results.length < count && scanned < maxScanned) {
+    const entries = await redis.xrevrange(key, endId, '-', 'COUNT', batchSize);
+    if (entries.length === 0) break;
+
+    for (const entry of entries) {
+      const msg = parseStreamEntry(entry as [string, string[]]);
+      if (
+        msg.speaker.toLowerCase().includes(lowerQuery) ||
+        msg.msg.toLowerCase().includes(lowerQuery)
+      ) {
+        results.push(msg);
+        if (results.length >= count) break;
+      }
+    }
+
+    scanned += entries.length;
+    // Set the next scan end to just before the last entry
+    const lastId = (entries[entries.length - 1] as [string, string[]])[0];
+    const parts = lastId.split('-');
+    const seq = parseInt(parts[1] || '0', 10);
+    endId = seq > 0 ? `${parts[0]}-${seq - 1}` : `${parseInt(parts[0], 10) - 1}`;
+  }
+
+  // Reverse to chronological order
+  return results.reverse();
 }
 
 /**

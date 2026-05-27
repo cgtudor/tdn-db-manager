@@ -25,6 +25,18 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_database ON audit_log(database_name);
 CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_discord_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
 
+CREATE TABLE IF NOT EXISTS dm_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_uuid TEXT NOT NULL,
+    character_name TEXT NOT NULL,
+    note TEXT NOT NULL,
+    author_discord_id TEXT NOT NULL,
+    author_username TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_dm_notes_uuid ON dm_notes(player_uuid);
+
 CREATE TABLE IF NOT EXISTS database_config (
     db_filename TEXT PRIMARY KEY,
     display_name TEXT NOT NULL,

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { requireDM } from '../auth/middleware';
 import * as redisService from '../services/redis';
+import * as dmNotes from '../services/dm-notes';
 
 const router = Router();
 
@@ -86,6 +87,63 @@ router.get('/analytics/daily', requireDM, async (req: Request, res: Response) =>
   }
 });
 
+// ─── DM Notes ───────────────────────────────────────────────
+
+router.get('/notes/:uuid', requireDM, (req: Request, res: Response) => {
+  try {
+    const notes = dmNotes.getNotesForPlayer(req.params.uuid as string);
+    res.json(notes);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/notes/:uuid', requireDM, (req: Request, res: Response) => {
+  try {
+    const { note, characterName } = req.body;
+    if (!note || note.trim().length === 0) {
+      res.status(400).json({ error: 'Note text required' });
+      return;
+    }
+    const created = dmNotes.addNote(
+      req.params.uuid as string,
+      characterName || 'Unknown',
+      note.trim(),
+      req.user!.id,
+      req.user!.username
+    );
+    res.status(201).json(created);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/notes/:uuid/:noteId', requireDM, (req: Request, res: Response) => {
+  try {
+    const deleted = dmNotes.deleteNote(
+      parseInt(req.params.noteId as string, 10),
+      req.user!.id,
+      req.user!.role === 'admin'
+    );
+    if (!deleted) {
+      res.status(404).json({ error: 'Note not found or not authorized' });
+      return;
+    }
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/sessions/:uuid', requireDM, async (req: Request, res: Response) => {
+  try {
+    const data = await redisService.getPlayerSessions(req.params.uuid as string);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/charinfo/:uuid', requireDM, async (req: Request, res: Response) => {
   try {
     const info = await redisService.getCharacterInfo(req.params.uuid as string);
@@ -104,6 +162,22 @@ router.get('/chat/history', requireDM, async (req: Request, res: Response) => {
     const area = (req.query.area as string) || '_all';
     const count = parseInt((req.query.count as string) || '50', 10);
     const messages = await redisService.getChatHistory(area, Math.min(count, 200));
+    res.json(messages);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/chat/search', requireDM, async (req: Request, res: Response) => {
+  try {
+    const area = (req.query.area as string) || '_all';
+    const query = req.query.q as string;
+    const count = parseInt((req.query.count as string) || '100', 10);
+    if (!query || query.length < 2) {
+      res.status(400).json({ error: 'Search query must be at least 2 characters' });
+      return;
+    }
+    const messages = await redisService.searchChat(area, query, Math.min(count, 200));
     res.json(messages);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
