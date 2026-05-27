@@ -13,11 +13,15 @@ function formatTime(ts: number): string {
 const channelColors: Record<string, string> = {
   Talk: 'text-text',
   Shout: 'text-orange-400',
+  Whisper: 'text-purple-400',
+  DM: 'text-cyan-400',
 };
 
-const channelBadgeVariants: Record<string, 'default' | 'warning'> = {
+const channelBadgeVariants: Record<string, 'default' | 'warning' | 'info'> = {
   Talk: 'default',
   Shout: 'warning',
+  Whisper: 'info',
+  DM: 'info',
 };
 
 export function LiveChat() {
@@ -27,6 +31,8 @@ export function LiveChat() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [showTalk, setShowTalk] = useState(true);
   const [showShout, setShowShout] = useState(true);
+  const [showWhisper, setShowWhisper] = useState(true);
+  const [showDM, setShowDM] = useState(true);
 
   const { messages, connected, clearMessages } = useChatStream(area);
   const { areas } = useLiveOverview();
@@ -61,11 +67,14 @@ export function LiveChat() {
   const filteredMessages = messages.filter((m) => {
     if (m.channel === 'Talk' && !showTalk) return false;
     if (m.channel === 'Shout' && !showShout) return false;
+    if (m.channel === 'Whisper' && !showWhisper) return false;
+    if (m.channel === 'DM' && !showDM) return false;
     return true;
   });
 
   const areaOptions = [
     { value: '_all', label: 'All Areas' },
+    { value: '_dm', label: 'DM Channel' },
     ...areas.map((a) => ({ value: a.areaTag, label: `${a.areaTag} (${a.playerCount})` })),
   ];
 
@@ -102,6 +111,22 @@ export function LiveChat() {
             }`}
           >
             Shout
+          </button>
+          <button
+            onClick={() => setShowWhisper(!showWhisper)}
+            className={`px-2 py-1 text-xs rounded transition-colors ${
+              showWhisper ? 'bg-purple-500 text-white' : 'bg-surface-dim text-text-muted hover:text-text'
+            }`}
+          >
+            Whisper
+          </button>
+          <button
+            onClick={() => setShowDM(!showDM)}
+            className={`px-2 py-1 text-xs rounded transition-colors ${
+              showDM ? 'bg-cyan-500 text-white' : 'bg-surface-dim text-text-muted hover:text-text'
+            }`}
+          >
+            DM
           </button>
 
           <div className="w-px h-5 bg-border mx-1" />
