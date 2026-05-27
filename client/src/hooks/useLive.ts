@@ -66,7 +66,10 @@ export function useChatStream(area: string) {
 
     let cancelled = false;
     liveApi.getChatHistory(area, 100).then((history) => {
-      if (!cancelled) setMessages(history);
+      if (!cancelled) {
+        setMessages(history);
+        if (history.length > 0) setConnected(true);
+      }
     }).catch(() => {});
 
     return () => { cancelled = true; };

@@ -138,7 +138,7 @@ export function LiveChat() {
         ) : (
           <div className="space-y-0.5">
             {filteredMessages.map((msg) => (
-              <div key={msg.id} className="flex gap-2 py-0.5 hover:bg-surface-hover rounded px-1 -mx-1">
+              <div key={msg.id} className="flex gap-2 py-0.5 hover:bg-surface-hover rounded px-1 -mx-1 flex-wrap sm:flex-nowrap">
                 <span className="text-text-muted text-xs tabular-nums flex-shrink-0 pt-0.5 w-16">
                   {formatTime(msg.ts)}
                 </span>
@@ -154,7 +154,7 @@ export function LiveChat() {
                   </span>
                 )}
                 <span className="font-semibold text-primary flex-shrink-0">{msg.speaker}:</span>
-                <span className={channelColors[msg.channel] || 'text-text'}>{msg.msg}</span>
+                <span className={`${channelColors[msg.channel] || 'text-text'} break-words min-w-0`}>{msg.msg}</span>
               </div>
             ))}
             <div ref={chatEndRef} />
