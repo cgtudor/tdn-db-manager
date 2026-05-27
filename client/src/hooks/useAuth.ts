@@ -24,6 +24,7 @@ export function useAuth() {
     isLoading,
     logout: logoutMutation.mutate,
     isAdmin: data?.user?.role === 'admin',
+    isDM: data?.user?.role === 'dm' || data?.user?.role === 'admin',
     isEditor: data?.user?.role === 'editor' || data?.user?.role === 'admin',
   };
 }

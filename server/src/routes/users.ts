@@ -19,8 +19,8 @@ router.put('/:discordId/role', requireAdmin, (req, res) => {
     const discordId = p(req.params.discordId);
     const { role } = req.body;
 
-    if (!['admin', 'editor', 'viewer'].includes(role)) {
-      res.status(400).json({ error: 'Invalid role. Must be admin, editor, or viewer' });
+    if (!['admin', 'dm', 'editor', 'viewer'].includes(role)) {
+      res.status(400).json({ error: 'Invalid role. Must be admin, dm, editor, or viewer' });
       return;
     }
 

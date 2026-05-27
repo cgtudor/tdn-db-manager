@@ -1,12 +1,12 @@
 import { Router, Request, Response } from 'express';
-import { requireAuth } from '../auth/middleware';
+import { requireDM } from '../auth/middleware';
 import * as redisService from '../services/redis';
 
 const router = Router();
 
 // ─── REST Endpoints (initial page load) ─────────────────────
 
-router.get('/status', requireAuth, async (_req: Request, res: Response) => {
+router.get('/status', requireDM, async (_req: Request, res: Response) => {
   try {
     const status = await redisService.getServerStatus();
     // If we got here without throwing, Redis is reachable
@@ -19,7 +19,7 @@ router.get('/status', requireAuth, async (_req: Request, res: Response) => {
   }
 });
 
-router.get('/players', requireAuth, async (_req: Request, res: Response) => {
+router.get('/players', requireDM, async (_req: Request, res: Response) => {
   try {
     const players = await redisService.getOnlinePlayers();
     res.json(players);
@@ -28,7 +28,7 @@ router.get('/players', requireAuth, async (_req: Request, res: Response) => {
   }
 });
 
-router.get('/areas', requireAuth, async (_req: Request, res: Response) => {
+router.get('/areas', requireDM, async (_req: Request, res: Response) => {
   try {
     const areas = await redisService.getAreaPopulations();
     res.json(areas);
@@ -37,7 +37,7 @@ router.get('/areas', requireAuth, async (_req: Request, res: Response) => {
   }
 });
 
-router.get('/areas/:tag/players', requireAuth, async (req: Request, res: Response) => {
+router.get('/areas/:tag/players', requireDM, async (req: Request, res: Response) => {
   try {
     const players = await redisService.getAreaPlayers(req.params.tag as string);
     res.json(players);
@@ -46,7 +46,7 @@ router.get('/areas/:tag/players', requireAuth, async (req: Request, res: Respons
   }
 });
 
-router.get('/chat/history', requireAuth, async (req: Request, res: Response) => {
+router.get('/chat/history', requireDM, async (req: Request, res: Response) => {
   try {
     const area = (req.query.area as string) || '_all';
     const count = parseInt((req.query.count as string) || '50', 10);
@@ -57,7 +57,7 @@ router.get('/chat/history', requireAuth, async (req: Request, res: Response) => 
   }
 });
 
-router.get('/feed/history', requireAuth, async (req: Request, res: Response) => {
+router.get('/feed/history', requireDM, async (req: Request, res: Response) => {
   try {
     const count = parseInt((req.query.count as string) || '50', 10);
     const events = await redisService.getActivityHistory(Math.min(count, 200));
@@ -69,7 +69,7 @@ router.get('/feed/history', requireAuth, async (req: Request, res: Response) => 
 
 // ─── SSE Streams (live updates) ─────────────────────────────
 
-router.get('/stream/chat', requireAuth, async (req: Request, res: Response) => {
+router.get('/stream/chat', requireDM, async (req: Request, res: Response) => {
   const area = (req.query.area as string) || '_all';
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -107,7 +107,7 @@ router.get('/stream/chat', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
-router.get('/stream/feed', requireAuth, async (req: Request, res: Response) => {
+router.get('/stream/feed', requireDM, async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -142,7 +142,7 @@ router.get('/stream/feed', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
-router.get('/stream/players', requireAuth, async (req: Request, res: Response) => {
+router.get('/stream/players', requireDM, async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');

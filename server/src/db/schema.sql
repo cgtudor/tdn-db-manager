@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS users (
     discord_id TEXT PRIMARY KEY,
     username TEXT NOT NULL,
     avatar_url TEXT,
-    role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin', 'editor', 'viewer')),
+    role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin', 'dm', 'editor', 'viewer')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     last_login_at TEXT
 );

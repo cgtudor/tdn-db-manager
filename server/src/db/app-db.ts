@@ -20,6 +20,7 @@ export function getAppDb(): Database.Database {
     db.exec(schema);
 
     migrateAuditLogConstraint();
+    migrateUserRoleDM();
     seedDefaultConfig();
   }
   return db;
@@ -54,6 +55,28 @@ function migrateAuditLogConstraint(): void {
     CREATE INDEX IF NOT EXISTS idx_audit_log_database ON audit_log(database_name);
     CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_discord_id);
     CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
+  `);
+}
+
+function migrateUserRoleDM(): void {
+  // Add 'dm' to the users role CHECK constraint if not already present
+  const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get() as { sql: string } | undefined;
+  if (!tableInfo || tableInfo.sql.includes("'dm'")) return;
+
+  db.exec(`
+    ALTER TABLE users RENAME TO users_old;
+
+    CREATE TABLE users (
+      discord_id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      avatar_url TEXT,
+      role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin', 'dm', 'editor', 'viewer')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      last_login_at TEXT
+    );
+
+    INSERT INTO users SELECT * FROM users_old;
+    DROP TABLE users_old;
   `);
 }
 

@@ -36,6 +36,18 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   next();
 }
 
+export function requireDM(req: Request, res: Response, next: NextFunction): void {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+  if (req.user!.role !== 'admin' && req.user!.role !== 'dm') {
+    res.status(403).json({ error: 'Dungeon Master or Admin access required' });
+    return;
+  }
+  next();
+}
+
 export function requireDbWrite(req: Request, res: Response, next: NextFunction): void {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: 'Authentication required' });

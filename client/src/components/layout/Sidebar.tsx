@@ -33,7 +33,7 @@ const themeIcons = { light: Sun, dark: Moon, system: Monitor } as const;
 const themeLabels = { light: 'Light', dark: 'Dark', system: 'System' } as const;
 
 export function Sidebar() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isDM } = useAuth();
   const { data: databases } = useDatabases();
   const [dbExpanded, setDbExpanded] = useState(false);
   const { theme, cycle } = useTheme();
@@ -54,15 +54,17 @@ export function Sidebar() {
         <SidebarLink to="/stores" icon={Store}>Stores</SidebarLink>
         <SidebarLink to="/search" icon={Search}>Search</SidebarLink>
 
-        {/* Live Server */}
-        <div className="pt-3">
-          <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-muted">
-            Live Server
+        {/* Live Server (DM/Admin only) */}
+        {isDM && (
+          <div className="pt-3">
+            <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-muted">
+              Live Server
+            </div>
+            <SidebarLink to="/live" icon={Activity} end>Overview</SidebarLink>
+            <SidebarLink to="/live/chat" icon={MessageSquare}>Area Chat</SidebarLink>
+            <SidebarLink to="/live/feed" icon={Radio}>Activity Feed</SidebarLink>
           </div>
-          <SidebarLink to="/live" icon={Activity} end>Overview</SidebarLink>
-          <SidebarLink to="/live/chat" icon={MessageSquare}>Area Chat</SidebarLink>
-          <SidebarLink to="/live/feed" icon={Radio}>Activity Feed</SidebarLink>
-        </div>
+        )}
 
         {/* Database list */}
         <div className="pt-3">

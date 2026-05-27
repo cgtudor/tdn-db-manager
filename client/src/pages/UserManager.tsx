@@ -6,8 +6,9 @@ import { useAuth } from '../hooks/useAuth';
 import type { UserRole } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 
-const ROLE_BADGES: Record<UserRole, 'success' | 'warning' | 'default'> = {
+const ROLE_BADGES: Record<UserRole, 'success' | 'warning' | 'info' | 'default'> = {
   admin: 'success',
+  dm: 'info',
   editor: 'warning',
   viewer: 'default',
 };
@@ -62,6 +63,7 @@ export function UserManager() {
                       disabled={roleMutation.isPending}
                     >
                       <option value="admin">admin</option>
+                      <option value="dm">dungeon master</option>
                       <option value="editor">editor</option>
                       <option value="viewer">viewer</option>
                     </select>
