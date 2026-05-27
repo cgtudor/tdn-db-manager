@@ -75,7 +75,7 @@ export function LiveChat() {
   const areaOptions = [
     { value: '_all', label: 'All Areas' },
     { value: '_dm', label: 'DM Channel' },
-    ...areas.map((a) => ({ value: a.areaTag, label: `${a.areaTag} (${a.playerCount})` })),
+    ...areas.map((a) => ({ value: a.areaTag, label: `${a.areaName} (${a.playerCount})` })),
   ];
 
   return (

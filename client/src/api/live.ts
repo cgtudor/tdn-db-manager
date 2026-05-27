@@ -17,6 +17,33 @@ export function getChatHistory(area: string = '_all', count: number = 100): Prom
   return apiGet(`/api/live/chat/history?area=${encodeURIComponent(area)}&count=${count}`);
 }
 
+export interface AreaAnalytics {
+  areaTag: string;
+  areaName: string;
+  allTime: number;
+  today: number;
+  week: number;
+  month: number;
+}
+
+export interface DailyHistory {
+  dayIndex: number;
+  date: string;
+  totalVisits: number;
+}
+
+export function getAreaAnalytics(): Promise<AreaAnalytics[]> {
+  return apiGet('/api/live/analytics/areas');
+}
+
+export function getDailyHistory(days: number = 30): Promise<DailyHistory[]> {
+  return apiGet(`/api/live/analytics/daily?days=${days}`);
+}
+
+export function getCharacterInfo(uuid: string): Promise<Record<string, any>> {
+  return apiGet(`/api/live/charinfo/${encodeURIComponent(uuid)}`);
+}
+
 export function getActivityHistory(count: number = 100): Promise<ActivityEvent[]> {
   return apiGet(`/api/live/feed/history?count=${count}`);
 }

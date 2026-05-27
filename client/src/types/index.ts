@@ -228,6 +228,7 @@ export interface OnlinePlayer {
 
 export interface AreaPopulation {
   areaTag: string;
+  areaName: string;
   playerCount: number;
   players: { uuid: string; name: string }[];
 }

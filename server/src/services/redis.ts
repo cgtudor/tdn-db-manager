@@ -94,18 +94,30 @@ export async function getAreaPopulations(): Promise<AreaPopulation[]> {
   const redis = getRedisClient();
   const popData = await redis.hgetall('tdn:area_pop');
 
+  // Build an areaTag→areaName lookup from online player data
+  const onlineData = await redis.hgetall('tdn:online');
+  const areaNames: Record<string, string> = {};
+  for (const json of Object.values(onlineData)) {
+    try {
+      const info = JSON.parse(json);
+      if (info.areaTag && info.area) {
+        areaNames[info.areaTag] = info.area;
+      }
+    } catch {}
+  }
+
   const areas: AreaPopulation[] = [];
 
   for (const [areaTag, countStr] of Object.entries(popData)) {
     const count = parseInt(countStr, 10);
     if (count <= 0) continue;
 
-    // Fetch the player list for this area
     const playersData = await redis.hgetall(`tdn:area_players:${areaTag}`);
     const players = Object.entries(playersData).map(([uuid, name]) => ({ uuid, name }));
 
     areas.push({
       areaTag,
+      areaName: areaNames[areaTag] || areaTag,
       playerCount: count,
       players,
     });
@@ -120,6 +132,126 @@ export async function getAreaPlayers(areaTag: string): Promise<{ uuid: string; n
   const redis = getRedisClient();
   const data = await redis.hgetall(`tdn:area_players:${areaTag}`);
   return Object.entries(data).map(([uuid, name]) => ({ uuid, name }));
+}
+
+// ─── Character Info ─────────────────────────────────────────
+
+export async function getCharacterInfo(uuid: string): Promise<Record<string, any> | null> {
+  const redis = getRedisClient();
+  const data = await redis.hget('tdn:charinfo', uuid);
+  if (!data) return null;
+  return JSON.parse(data);
+}
+
+// ─── Area Analytics ─────────────────────────────────────────
+
+export interface AreaAnalytics {
+  areaTag: string;
+  areaName: string;
+  allTime: number;
+  today: number;
+  week: number;
+  month: number;
+}
+
+export async function getAreaAnalytics(): Promise<AreaAnalytics[]> {
+  const redis = getRedisClient();
+
+  // Get area names and all-time visits
+  const [areaNames, allTimeVisits] = await Promise.all([
+    redis.hgetall('tdn:area_names'),
+    redis.hgetall('tdn:area_visits'),
+  ]);
+
+  // Calculate day indices for today, 7 days ago, 30 days ago
+  const nowDayIndex = Math.floor(Date.now() / 1000 / 86400);
+  const dayKeys: string[] = [];
+  for (let d = 0; d < 30; d++) {
+    dayKeys.push(`tdn:area_visits:${nowDayIndex - d}`);
+  }
+
+  // Pipeline fetch all daily keys
+  const pipeline = redis.pipeline();
+  for (const key of dayKeys) {
+    pipeline.hgetall(key);
+  }
+  const dailyResults = await pipeline.exec();
+
+  // Build area data map
+  const areaMap: Record<string, AreaAnalytics> = {};
+
+  // Initialize from all-time visits
+  for (const [tag, countStr] of Object.entries(allTimeVisits)) {
+    areaMap[tag] = {
+      areaTag: tag,
+      areaName: areaNames[tag] || tag,
+      allTime: parseInt(countStr, 10) || 0,
+      today: 0,
+      week: 0,
+      month: 0,
+    };
+  }
+
+  // Also add any areas that have names but no visits yet
+  for (const [tag, name] of Object.entries(areaNames)) {
+    if (!areaMap[tag]) {
+      areaMap[tag] = { areaTag: tag, areaName: name, allTime: 0, today: 0, week: 0, month: 0 };
+    }
+  }
+
+  // Accumulate daily visits
+  if (dailyResults) {
+    for (let d = 0; d < dailyResults.length; d++) {
+      const [err, data] = dailyResults[d] as [Error | null, Record<string, string>];
+      if (err || !data) continue;
+
+      for (const [tag, countStr] of Object.entries(data)) {
+        if (!areaMap[tag]) {
+          areaMap[tag] = { areaTag: tag, areaName: areaNames[tag] || tag, allTime: 0, today: 0, week: 0, month: 0 };
+        }
+        const count = parseInt(countStr, 10) || 0;
+        if (d === 0) areaMap[tag].today += count;
+        if (d < 7) areaMap[tag].week += count;
+        areaMap[tag].month += count;
+      }
+    }
+  }
+
+  return Object.values(areaMap);
+}
+
+export async function getAreaDailyHistory(days: number = 30): Promise<{ dayIndex: number; date: string; totalVisits: number }[]> {
+  const redis = getRedisClient();
+  const nowDayIndex = Math.floor(Date.now() / 1000 / 86400);
+
+  const pipeline = redis.pipeline();
+  for (let d = days - 1; d >= 0; d--) {
+    pipeline.hgetall(`tdn:area_visits:${nowDayIndex - d}`);
+  }
+  const results = await pipeline.exec();
+
+  const history: { dayIndex: number; date: string; totalVisits: number }[] = [];
+
+  for (let d = days - 1; d >= 0; d--) {
+    const idx = days - 1 - d;
+    const dayIndex = nowDayIndex - d;
+    const dateObj = new Date(dayIndex * 86400 * 1000);
+    const date = dateObj.toISOString().split('T')[0];
+
+    let total = 0;
+    if (results) {
+      const [err, data] = results[idx] as [Error | null, Record<string, string>];
+      if (!err && data) {
+        for (const countStr of Object.values(data)) {
+          total += parseInt(countStr, 10) || 0;
+        }
+      }
+    }
+
+    history.push({ dayIndex, date, totalVisits: total });
+  }
+
+  return history;
 }
 
 // ─── Chat Stream ────────────────────────────────────────────

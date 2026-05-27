@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Swords, FlaskConical, Leaf, Store, Database,
   Shield, ClipboardList, Users, ChevronDown, ChevronRight, LogOut, Search,
   Sun, Moon, Monitor,
-  Activity, MessageSquare, Radio,
+  Activity, MessageSquare, Radio, Map,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -63,6 +63,7 @@ export function Sidebar() {
             <SidebarLink to="/live" icon={Activity} end>Overview</SidebarLink>
             <SidebarLink to="/live/chat" icon={MessageSquare}>Area Chat</SidebarLink>
             <SidebarLink to="/live/feed" icon={Radio}>Activity Feed</SidebarLink>
+            <SidebarLink to="/live/heatmap" icon={Map}>Area Analytics</SidebarLink>
           </div>
         )}
 

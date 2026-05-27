@@ -46,6 +46,38 @@ router.get('/areas/:tag/players', requireDM, async (req: Request, res: Response)
   }
 });
 
+router.get('/analytics/areas', requireDM, async (_req: Request, res: Response) => {
+  try {
+    const areas = await redisService.getAreaAnalytics();
+    res.json(areas);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/analytics/daily', requireDM, async (req: Request, res: Response) => {
+  try {
+    const days = Math.min(parseInt((req.query.days as string) || '30', 10), 35);
+    const history = await redisService.getAreaDailyHistory(days);
+    res.json(history);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/charinfo/:uuid', requireDM, async (req: Request, res: Response) => {
+  try {
+    const info = await redisService.getCharacterInfo(req.params.uuid as string);
+    if (!info) {
+      res.status(404).json({ error: 'Character not found' });
+      return;
+    }
+    res.json(info);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/chat/history', requireDM, async (req: Request, res: Response) => {
   try {
     const area = (req.query.area as string) || '_all';
