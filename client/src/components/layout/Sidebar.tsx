@@ -10,10 +10,11 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
-function SidebarLink({ to, icon: Icon, children }: { to: string; icon: React.ElementType; children: React.ReactNode }) {
+function SidebarLink({ to, icon: Icon, end, children }: { to: string; icon: React.ElementType; end?: boolean; children: React.ReactNode }) {
   return (
     <NavLink
       to={to}
+      end={end}
       className={({ isActive }) =>
         `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
           isActive
@@ -58,7 +59,7 @@ export function Sidebar() {
           <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-muted">
             Live Server
           </div>
-          <SidebarLink to="/live" icon={Activity}>Overview</SidebarLink>
+          <SidebarLink to="/live" icon={Activity} end>Overview</SidebarLink>
           <SidebarLink to="/live/chat" icon={MessageSquare}>Area Chat</SidebarLink>
           <SidebarLink to="/live/feed" icon={Radio}>Activity Feed</SidebarLink>
         </div>

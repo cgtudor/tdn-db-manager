@@ -53,7 +53,7 @@ export function createBlockingClient(): Redis {
 }
 
 export function isRedisConnected(): boolean {
-  return client?.status === 'ready';
+  return client?.status === 'ready' || client?.status === 'connect';
 }
 
 // ─── Server Status ──────────────────────────────────────────

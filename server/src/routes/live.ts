@@ -9,12 +9,13 @@ const router = Router();
 router.get('/status', requireAuth, async (_req: Request, res: Response) => {
   try {
     const status = await redisService.getServerStatus();
+    // If we got here without throwing, Redis is reachable
     res.json({
       ...status,
-      redisConnected: redisService.isRedisConnected(),
+      redisConnected: true,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.json({ playerCount: 0, lastHeartbeat: 0, redisConnected: false });
   }
 });
 
@@ -159,11 +160,12 @@ router.get('/stream/players', requireAuth, async (req: Request, res: Response) =
   // Poll player/area data every 3 seconds and send updates
   while (alive) {
     try {
-      const [players, areas, status] = await Promise.all([
+      const [players, areas, rawStatus] = await Promise.all([
         redisService.getOnlinePlayers(),
         redisService.getAreaPopulations(),
         redisService.getServerStatus(),
       ]);
+      const status = { ...rawStatus, redisConnected: true };
 
       if (!alive) break;
 
