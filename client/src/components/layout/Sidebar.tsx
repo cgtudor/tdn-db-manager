@@ -18,7 +18,7 @@ function SidebarLink({ to, icon: Icon, end, children }: { to: string; icon: Reac
       className={({ isActive }) =>
         `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
           isActive
-            ? 'bg-sidebar-hover text-white font-medium'
+            ? 'bg-sidebar-hover text-white font-medium border-l-2 border-amber-500 -ml-[2px]'
             : 'text-sidebar-muted hover:text-sidebar-text hover:bg-sidebar-hover/50'
         }`
       }
@@ -26,6 +26,16 @@ function SidebarLink({ to, icon: Icon, end, children }: { to: string; icon: Reac
       <Icon className="h-4 w-4 flex-shrink-0" />
       <span className="truncate">{children}</span>
     </NavLink>
+  );
+}
+
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-muted flex items-center gap-2">
+      <div className="h-px flex-1 bg-white/10" />
+      <span>{children}</span>
+      <div className="h-px flex-1 bg-white/10" />
+    </div>
   );
 }
 
@@ -40,14 +50,28 @@ export function Sidebar() {
 
   return (
     <aside className="flex flex-col w-60 bg-sidebar text-sidebar-text h-screen sticky top-0 overflow-hidden">
-      {/* Logo */}
+      {/* Logo / Branding */}
       <div className="px-4 py-4 border-b border-white/10">
-        <h1 className="text-lg font-bold tracking-tight">TDN Database Manager</h1>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-amber-600/20 flex items-center justify-center flex-shrink-0">
+            <svg viewBox="0 0 24 24" className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-sm font-bold tracking-tight" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+              The Dragon's Neck
+            </h1>
+            <p className="text-[10px] text-sidebar-muted uppercase tracking-widest">Database Manager</p>
+          </div>
+        </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
-        <SidebarLink to="/" icon={LayoutDashboard}>Dashboard</SidebarLink>
+        <SidebarLink to="/" icon={LayoutDashboard} end>Dashboard</SidebarLink>
         <SidebarLink to="/loot" icon={Swords}>Loot Editor</SidebarLink>
         <SidebarLink to="/crafting" icon={FlaskConical}>Crafting Editor</SidebarLink>
         <SidebarLink to="/ingredients" icon={Leaf}>Ingredients</SidebarLink>
@@ -57,9 +81,7 @@ export function Sidebar() {
         {/* Live Server (DM/Admin only) */}
         {isDM && (
           <div className="pt-3">
-            <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-muted">
-              Live Server
-            </div>
+            <SectionHeader>Live Server</SectionHeader>
             <SidebarLink to="/live" icon={Activity} end>Overview</SidebarLink>
             <SidebarLink to="/live/chat" icon={MessageSquare}>Area Chat</SidebarLink>
             <SidebarLink to="/live/feed" icon={Radio}>Activity Feed</SidebarLink>
@@ -90,9 +112,7 @@ export function Sidebar() {
         {/* Admin section */}
         {isAdmin && (
           <div className="pt-3">
-            <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-muted">
-              Admin
-            </div>
+            <SectionHeader>Admin</SectionHeader>
             <SidebarLink to="/backups" icon={Shield}>Backups</SidebarLink>
             <SidebarLink to="/audit" icon={ClipboardList}>Audit Log</SidebarLink>
             <SidebarLink to="/users" icon={Users}>Users</SidebarLink>
