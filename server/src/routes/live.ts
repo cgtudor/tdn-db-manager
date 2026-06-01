@@ -1,7 +1,13 @@
 import { Router, Request, Response } from 'express';
+import fs from 'fs';
 import { requireDM } from '../auth/middleware';
+import { config } from '../config';
 import * as redisService from '../services/redis';
 import * as dmNotes from '../services/dm-notes';
+
+// Cached area graph data (loaded once from area_graph.json)
+let cachedAreaGraph: any = null;
+let cachedAreaGraphMtime: number = 0;
 
 const router = Router();
 
@@ -63,6 +69,29 @@ router.get('/analytics/debug', requireDM, async (_req: Request, res: Response) =
       todaySample: Object.entries(todayData).slice(0, 5),
       allVisitKeys: keys.sort(),
     });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/analytics/area-graph', requireDM, async (_req: Request, res: Response) => {
+  try {
+    const graphPath = config.areaGraphPath;
+    if (!fs.existsSync(graphPath)) {
+      res.status(404).json({ error: 'Area graph data not found. Run parse_areas.py to generate it.' });
+      return;
+    }
+
+    // Reload if file changed
+    const stat = fs.statSync(graphPath);
+    const mtime = stat.mtimeMs;
+    if (!cachedAreaGraph || mtime !== cachedAreaGraphMtime) {
+      const raw = fs.readFileSync(graphPath, 'utf-8');
+      cachedAreaGraph = JSON.parse(raw);
+      cachedAreaGraphMtime = mtime;
+    }
+
+    res.json(cachedAreaGraph);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

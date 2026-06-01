@@ -41,4 +41,6 @@ export const config = {
     host: process.env.REDIS_HOST || '127.0.0.1',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),
   },
+
+  areaGraphPath: process.env.AREA_GRAPH_PATH || path.resolve(__dirname, '../data/area_graph.json'),
 };

@@ -1,13 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getAreaAnalytics, getDailyHistory } from '../api/live';
+import { getAreaAnalytics, getDailyHistory, getAreaGraph } from '../api/live';
 import type { AreaAnalytics } from '../api/live';
 import { Loading } from '../components/shared/Loading';
 import { EmptyState } from '../components/shared/EmptyState';
 import {
   Map, TrendingUp, BarChart3, ArrowUpDown, Eye, EyeOff,
-  Flame, Snowflake, Calendar,
+  Flame, Snowflake, Calendar, Network,
 } from 'lucide-react';
+
+const AreaMapView = lazy(() => import('../components/AreaMapView').then(m => ({ default: m.AreaMapView })));
 
 type SortField = 'today' | 'week' | 'month' | 'allTime' | 'areaName';
 type SortDir = 'asc' | 'desc';
@@ -159,7 +161,7 @@ export function AreaHeatmap() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [timeRange, setTimeRange] = useState<TimeRange>('week');
   const [showDead, setShowDead] = useState(false);
-  const [view, setView] = useState<'table' | 'heatmap'>('heatmap');
+  const [view, setView] = useState<'table' | 'heatmap' | 'map'>('heatmap');
 
   const { data: areas, isLoading: areasLoading } = useQuery({
     queryKey: ['area-analytics'],
@@ -171,6 +173,13 @@ export function AreaHeatmap() {
     queryKey: ['daily-history'],
     queryFn: () => getDailyHistory(30),
     staleTime: 60_000,
+  });
+
+  const { data: graphData } = useQuery({
+    queryKey: ['area-graph'],
+    queryFn: getAreaGraph,
+    staleTime: 5 * 60_000, // graph structure changes rarely
+    enabled: view === 'map', // only fetch when map view is active
   });
 
   const toggleSort = (field: SortField) => {
@@ -229,6 +238,12 @@ export function AreaHeatmap() {
               className={`px-3 py-1 text-xs ${view === 'table' ? 'bg-primary text-white' : 'bg-surface text-text-muted hover:text-text'}`}
             >
               <BarChart3 className="h-3 w-3 inline mr-1" />Table
+            </button>
+            <button
+              onClick={() => setView('map')}
+              className={`px-3 py-1 text-xs ${view === 'map' ? 'bg-primary text-white' : 'bg-surface text-text-muted hover:text-text'}`}
+            >
+              <Network className="h-3 w-3 inline mr-1" />Map
             </button>
           </div>
 
@@ -293,8 +308,18 @@ export function AreaHeatmap() {
         <DailyChart data={dailyHistory} />
       )}
 
-      {/* Heatmap or Table view */}
-      {view === 'heatmap' ? (
+      {/* Map / Heatmap / Table view */}
+      {view === 'map' ? (
+        <div className="relative">
+          {graphData ? (
+            <Suspense fallback={<Loading message="Loading map..." />}>
+              <AreaMapView graphData={graphData} analytics={areas} timeRange={timeRange} />
+            </Suspense>
+          ) : (
+            <Loading message="Loading area graph..." />
+          )}
+        </div>
+      ) : view === 'heatmap' ? (
         <div className="rounded-lg border border-border bg-surface p-4">
           <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
             <Flame className="h-3.5 w-3.5 inline mr-1" />

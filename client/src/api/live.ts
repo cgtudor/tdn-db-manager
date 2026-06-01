@@ -48,6 +48,55 @@ export function getDailyHistory(days: number = 30): Promise<DailyHistory[]> {
   return apiGet(`/api/live/analytics/daily?days=${days}`);
 }
 
+// Area graph types (from parse_areas.py output)
+export interface AreaGraphNode {
+  id: string;
+  name: string;
+  tag: string;
+  region: string;
+  connections: number;
+  width: number;
+  height: number;
+  tileset: string;
+  areaType: 'exterior' | 'interior' | 'underground' | 'dungeon';
+  isInterior: boolean;
+  isUnderground: boolean;
+  isDungeon: boolean;
+  dungeonLevel?: number;
+  x: number;
+  y: number;
+  positioned: boolean;
+}
+
+export interface AreaGraphLink {
+  source: string;
+  target: string;
+  label: string;
+  type: 'door' | 'trigger';
+  direction: 'north' | 'south' | 'east' | 'west' | 'interior';
+  sourceX: number;
+  sourceY: number;
+}
+
+export interface AreaGraphData {
+  nodes: AreaGraphNode[];
+  links: AreaGraphLink[];
+  regions: string[];
+  stats: {
+    totalAreas: number;
+    totalLinks: number;
+    orphanCount: number;
+    regionCount: number;
+    interiorCount: number;
+    dungeonCount: number;
+    positionedCount: number;
+  };
+}
+
+export function getAreaGraph(): Promise<AreaGraphData> {
+  return apiGet('/api/live/analytics/area-graph');
+}
+
 export interface PlayerSessionSummary {
   totalPlaytime: number;
   sessions: { login: number; logout: number; duration: number; name: string }[];
