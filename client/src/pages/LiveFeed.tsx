@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useActivityFeed } from '../hooks/useLive';
 import { Badge } from '../components/ui/Badge';
 import {
-  Radio, Wifi, WifiOff,
+  Radio, WifiOff,
   LogIn, LogOut, Skull, TrendingUp, Hammer, Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';

@@ -4,7 +4,7 @@ import { useChatStream, useLiveOverview } from '../hooks/useLive';
 import { searchChat } from '../api/live';
 import { Badge } from '../components/ui/Badge';
 import { Select } from '../components/ui/Select';
-import { MessageSquare, Wifi, WifiOff, Trash2, ArrowDown, Search, X, Loader2 } from 'lucide-react';
+import { MessageSquare, WifiOff, Trash2, ArrowDown, Search, X, Loader2 } from 'lucide-react';
 import type { ChatMessage } from '../types';
 
 function formatTime(ts: number): string {

@@ -7,7 +7,7 @@ import { EmptyState } from '../components/shared/EmptyState';
 import { Badge } from '../components/ui/Badge';
 import { useAuth } from '../hooks/useAuth';
 import {
-  Users, MapPin, Heart, Clock, Wifi, WifiOff, Activity,
+  Users, MapPin, Heart, Clock, WifiOff, Activity,
   X, Shield, Coins, Sword, BookOpen, Star, Briefcase,
   StickyNote, Send, Trash2,
 } from 'lucide-react';

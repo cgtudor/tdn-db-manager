@@ -9,7 +9,7 @@ import { getStores } from '../api/stores';
 import { getServerStatus } from '../api/live';
 import {
   Database, Swords, FlaskConical, HardDrive, Clock, ArrowRight, Trash2, Loader2,
-  Store, Leaf, Users, Wifi, WifiOff,
+  Store, Leaf, Users, WifiOff,
 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Loading } from '../components/shared/Loading';
