@@ -73,7 +73,13 @@ export function LiveFeed() {
             <Radio className="h-4 w-4 inline mr-1.5" />Activity Feed
           </h1>
           {connected ? (
-            <Badge variant="success"><Wifi className="h-3 w-3 inline mr-1" />Live</Badge>
+            <Badge variant="success">
+              <span className="relative flex h-2 w-2 mr-1.5">
+                <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              Live
+            </Badge>
           ) : (
             <Badge variant="warning"><WifiOff className="h-3 w-3 inline mr-1" />Connecting</Badge>
           )}

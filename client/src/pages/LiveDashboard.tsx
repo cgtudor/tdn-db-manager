@@ -84,7 +84,7 @@ function CharacterPanel({ uuid, onClose }: { uuid: string; onClose: () => void }
   const [submitting, setSubmitting] = useState(false);
 
   return (
-    <div className="w-80 flex-shrink-0 border-l border-border bg-surface overflow-y-auto">
+    <div className="w-80 flex-shrink-0 border-l border-border bg-surface overflow-y-auto animate-slide-in-right">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-surface-dim">
         <h3 className="text-sm font-semibold text-text">Character Info</h3>
         <button onClick={onClose} className="p-1 rounded hover:bg-surface-hover text-text-muted hover:text-text">
@@ -297,7 +297,13 @@ export function LiveDashboard() {
           <h1 className="text-xl font-bold text-text">Live Server</h1>
           <div className="flex items-center gap-2">
             {connected ? (
-              <Badge variant="success"><Wifi className="h-3 w-3 inline mr-1" />Live</Badge>
+              <Badge variant="success">
+                <span className="relative flex h-2 w-2 mr-1.5">
+                  <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                </span>
+                Live
+              </Badge>
             ) : (
               <Badge variant="warning"><WifiOff className="h-3 w-3 inline mr-1" />Connecting</Badge>
             )}

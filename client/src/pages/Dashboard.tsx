@@ -80,7 +80,13 @@ export function Dashboard() {
       {isDM && serverStatus && (
         <div className="flex items-center gap-4 px-4 py-2.5 rounded-lg border border-border bg-surface text-sm">
           {serverStatus.redisConnected ? (
-            <Badge variant="success"><Wifi className="h-3 w-3 inline mr-1" />Server Online</Badge>
+            <Badge variant="success">
+              <span className="relative flex h-2 w-2 mr-1.5">
+                <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              Server Online
+            </Badge>
           ) : (
             <Badge variant="warning"><WifiOff className="h-3 w-3 inline mr-1" />Server Offline</Badge>
           )}
