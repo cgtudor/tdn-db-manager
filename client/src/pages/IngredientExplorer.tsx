@@ -398,7 +398,7 @@ export function IngredientExplorer() {
                     </thead>
                     <tbody className="divide-y divide-border">
                       {detail.recipes.map(r => (
-                        <tr key={r.recipe_id} className="hover:bg-surface-hover">
+                        <tr key={r.recipe_id} className="hover:bg-surface-hover odd:bg-surface-dim/40">
                           <td className="px-3 py-1.5">
                             <div className="font-medium">{r.recipe_name}</div>
                             <div className="text-xs text-text-muted font-mono">{r.recipe_resref}</div>

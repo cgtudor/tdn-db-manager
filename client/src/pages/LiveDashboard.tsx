@@ -388,8 +388,8 @@ export function LiveDashboard() {
                     <tr className="border-b border-border bg-surface-dim text-text-secondary text-left">
                       <th className="px-3 py-2 font-medium">Character</th>
                       <th className="px-3 py-2 font-medium">Area</th>
-                      <th className="px-3 py-2 font-medium text-center">HP</th>
-                      <th className="px-3 py-2 font-medium text-center">Lv</th>
+                      <th className="px-3 py-2 font-medium text-right">HP</th>
+                      <th className="px-3 py-2 font-medium text-right">Lv</th>
                       <th className="px-3 py-2 font-medium text-right">Session</th>
                     </tr>
                   </thead>
@@ -409,12 +409,12 @@ export function LiveDashboard() {
                           <div className="text-xs text-text-muted">{p.player}</div>
                         </td>
                         <td className="px-3 py-1.5 text-text-muted text-xs">{p.area}</td>
-                        <td className="px-3 py-1.5 text-center">
-                          <span className="inline-flex items-center gap-0.5 text-xs tabular-nums">
+                        <td className="px-3 py-1.5 text-right">
+                          <span className="inline-flex items-center justify-end gap-0.5 text-xs tabular-nums">
                             <Heart className="h-3 w-3 text-red-400" />{p.hp}
                           </span>
                         </td>
-                        <td className="px-3 py-1.5 text-center tabular-nums">{p.level}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{p.level}</td>
                         <td className="px-3 py-1.5 text-right text-text-muted text-xs">
                           <Clock className="h-3 w-3 inline mr-0.5" />{formatDuration(p.loginTime)}
                         </td>

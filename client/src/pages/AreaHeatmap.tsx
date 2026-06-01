@@ -352,7 +352,7 @@ export function AreaHeatmap() {
               </thead>
               <tbody className="divide-y divide-border">
                 {sortedAreas.map((a) => (
-                  <tr key={a.areaTag} className="hover:bg-surface-hover">
+                  <tr key={a.areaTag} className="hover:bg-surface-hover odd:bg-surface-dim/40">
                     <td className="px-3 py-1.5">
                       <div className="font-medium">{a.areaName}</div>
                       <div className="text-xs text-text-muted font-mono">{a.areaTag}</div>

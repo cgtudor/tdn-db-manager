@@ -192,7 +192,7 @@ export function StoreExplorer() {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {filteredItems?.map((item, idx) => (
-                      <tr key={`${item.resref}_${idx}`} className="hover:bg-surface-hover">
+                      <tr key={`${item.resref}_${idx}`} className="hover:bg-surface-hover odd:bg-surface-dim/40">
                         <td className="px-3 py-1.5">
                           <div className="font-medium">{item.name}</div>
                           <div className="text-xs text-text-muted font-mono">{item.resref}</div>

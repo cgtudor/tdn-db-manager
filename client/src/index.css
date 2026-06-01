@@ -74,6 +74,13 @@
   }
 }
 
+/* Sticky table headers */
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

@@ -71,7 +71,7 @@ export function AuditLog() {
             </thead>
             <tbody>
               {data.data.map(entry => (
-                <tr key={entry.id} className="border-b border-border last:border-0 hover:bg-surface-hover/50">
+                <tr key={entry.id} className="border-b border-border last:border-0 hover:bg-surface-hover/50 odd:bg-surface-dim/40">
                   <td className="px-3 py-2 text-text-muted whitespace-nowrap" title={entry.created_at}>
                     {formatDistanceToNow(new Date(entry.created_at + 'Z'), { addSuffix: true })}
                   </td>
