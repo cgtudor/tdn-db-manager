@@ -291,8 +291,8 @@ export function LiveDashboard() {
   if (isLoading) return <Loading message="Connecting to server..." />;
 
   return (
-    <div className="flex gap-0 h-[calc(100vh-4rem)]">
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6 max-w-6xl">
+    <div className="flex gap-0 h-screen">
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-text">Live Server</h1>
           <div className="flex items-center gap-2">

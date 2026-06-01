@@ -32,7 +32,7 @@ export function DatabaseExplorer() {
   const hasWriteAccess = canWriteDb(user?.role, dbName!);
 
   return (
-    <div className="space-y-4">
+    <div className="px-6 py-4 space-y-4 overflow-y-auto h-screen">
       <div className="flex items-center gap-3">
         <Link to="/" className="p-1.5 rounded-md hover:bg-surface-hover text-text-muted">
           <ArrowLeft className="h-4 w-4" />

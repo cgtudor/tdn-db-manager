@@ -131,7 +131,7 @@ export function CraftingEditor() {
   };
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-7rem)]">
+    <div className="flex gap-6 h-screen">
       {/* Left panel: Recipe list */}
       <div className="w-96 flex-shrink-0 flex flex-col border border-border rounded-lg bg-surface overflow-hidden">
         <div className="p-3 border-b border-border space-y-2">

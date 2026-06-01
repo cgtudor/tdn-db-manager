@@ -73,7 +73,7 @@ export function IngredientExplorer() {
   const tierOptions = [1, 2, 3, 4, 5].map(t => ({ value: t, label: `Tier ${TIER_LABELS[t]}` }));
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-4rem)]">
+    <div className="flex gap-4 h-screen">
       {/* Left panel - ingredient list */}
       <div className="w-80 flex-shrink-0 flex flex-col border-r border-border">
         <div className="p-3 space-y-2 border-b border-border">

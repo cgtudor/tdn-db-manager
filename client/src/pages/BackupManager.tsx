@@ -34,7 +34,7 @@ export function BackupManager() {
   }, {} as Record<string, typeof backups>) ?? {};
 
   return (
-    <div className="space-y-6">
+    <div className="px-6 py-4 space-y-6 overflow-y-auto h-screen">
       <h1 className="text-2xl font-bold text-text">Backup Manager</h1>
       <p className="text-sm text-text-secondary">Backups are created automatically before database edits.</p>
 

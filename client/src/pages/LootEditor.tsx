@@ -108,7 +108,7 @@ export function LootEditor() {
   if (isLoading) return <Loading />;
 
   return (
-    <div className="space-y-4">
+    <div className="px-6 py-4 space-y-4 overflow-y-auto h-screen">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-text">Loot Editor</h1>
         {selectedItems.size > 0 && isEditor && (

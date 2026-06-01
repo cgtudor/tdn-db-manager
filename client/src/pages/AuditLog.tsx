@@ -30,7 +30,7 @@ export function AuditLog() {
   const totalPages = data ? Math.ceil(data.total / 50) : 0;
 
   return (
-    <div className="space-y-4">
+    <div className="px-6 py-4 space-y-4 overflow-y-auto h-screen">
       <h1 className="text-2xl font-bold text-text">Audit Log</h1>
 
       <div className="flex gap-2">

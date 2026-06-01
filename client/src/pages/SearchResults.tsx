@@ -30,7 +30,7 @@ export function SearchResults() {
   }, {} as Record<string, typeof results>) ?? {};
 
   return (
-    <div className="space-y-6">
+    <div className="px-6 py-4 space-y-6 overflow-y-auto h-screen">
       <h1 className="text-2xl font-bold text-text">Search</h1>
 
       <form onSubmit={handleSubmit} className="flex gap-2 max-w-lg">

@@ -113,7 +113,7 @@ export function TableView() {
   if (table.error) return <div className="text-danger">Error: {(table.error as Error).message}</div>;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3rem)]">
+    <div className="flex flex-col h-screen px-6 py-4">
       {/* Header */}
       <div className="flex items-center gap-3 pb-3 flex-shrink-0">
         <Link to={`/db/${dbName}`} className="p-1.5 rounded-md hover:bg-surface-hover text-text-muted">

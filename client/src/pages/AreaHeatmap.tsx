@@ -209,7 +209,7 @@ export function AreaHeatmap() {
   const maxForRange = Math.max(...(sortedAreas.map(a => a[timeRange])), 1);
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="px-6 py-4 space-y-6 overflow-y-auto h-screen">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-text">

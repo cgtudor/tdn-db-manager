@@ -27,7 +27,7 @@ export function UserManager() {
   if (isLoading) return <Loading />;
 
   return (
-    <div className="space-y-4">
+    <div className="px-6 py-4 space-y-4 overflow-y-auto h-screen">
       <h1 className="text-2xl font-bold text-text">User Management</h1>
       <p className="text-sm text-text-secondary">Users appear here after they log in with Discord.</p>
 

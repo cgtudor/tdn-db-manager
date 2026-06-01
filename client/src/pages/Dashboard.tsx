@@ -70,7 +70,7 @@ export function Dashboard() {
   const totalTables = databases?.reduce((sum, db) => sum + db.tableCount, 0) ?? 0;
 
   return (
-    <div className="space-y-6">
+    <div className="px-6 py-4 space-y-6 overflow-y-auto h-screen">
       <div>
         <h1 className="text-2xl font-bold text-text">Dashboard</h1>
         <p className="text-sm text-text-secondary mt-1">Manage TDN game databases</p>

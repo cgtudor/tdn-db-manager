@@ -65,7 +65,7 @@ export function LiveFeed() {
   }
 
   return (
-    <div className="space-y-4 max-w-3xl">
+    <div className="px-6 py-4 space-y-4 overflow-y-auto h-screen">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
