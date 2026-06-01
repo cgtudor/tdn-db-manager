@@ -46,23 +46,23 @@ function buildTheme(dark: boolean) {
     palette: {
       mode: dark ? 'dark' : 'light',
       primary: {
-        main: dark ? '#818cf8' : '#6366f1',
+        main: dark ? '#d97706' : '#b45309',
       },
       background: {
-        default: dark ? '#111827' : '#f9fafb',
-        paper: dark ? '#1f2937' : '#ffffff',
+        default: dark ? '#12100e' : '#faf7f2',
+        paper: dark ? '#1a1614' : '#fffdf9',
       },
       text: {
-        primary: dark ? '#f9fafb' : '#111827',
-        secondary: dark ? '#d1d5db' : '#6b7280',
+        primary: dark ? '#f5efe8' : '#1c1410',
+        secondary: dark ? '#c4b8a8' : '#5c4f42',
       },
-      divider: dark ? '#374151' : '#e5e7eb',
+      divider: dark ? '#33291f' : '#e8e0d4',
       error: {
-        main: dark ? '#f87171' : '#ef4444',
+        main: dark ? '#f87171' : '#dc2626',
       },
     },
     typography: {
-      fontFamily: 'inherit',
+      fontFamily: "'Source Sans 3', system-ui, sans-serif",
       fontSize: 13,
     },
     shape: {
@@ -150,10 +150,10 @@ export function DataGrid({
     return newRow;
   }, [onUpdate]);
 
-  const borderColor = isDark ? '#374151' : '#e5e7eb';
-  const headerBg = isDark ? '#111827' : '#f9fafb';
-  const hoverBg = isDark ? '#374151' : '#f3f4f6';
-  const textSecondary = isDark ? '#d1d5db' : '#6b7280';
+  const borderColor = isDark ? '#33291f' : '#e8e0d4';
+  const headerBg = isDark ? '#12100e' : '#faf7f2';
+  const hoverBg = isDark ? '#2a2420' : '#f5f0e8';
+  const textSecondary = isDark ? '#c4b8a8' : '#5c4f42';
 
   return (
     <ThemeProvider theme={muiTheme}>
@@ -219,9 +219,9 @@ export function DataGrid({
                 backgroundColor: hoverBg,
               },
               '&.Mui-selected': {
-                backgroundColor: isDark ? 'rgba(129,140,248,0.08)' : 'rgba(99,102,241,0.04)',
+                backgroundColor: isDark ? 'rgba(217,119,6,0.08)' : 'rgba(180,83,9,0.04)',
                 '&:hover': {
-                  backgroundColor: isDark ? 'rgba(129,140,248,0.12)' : 'rgba(99,102,241,0.08)',
+                  backgroundColor: isDark ? 'rgba(217,119,6,0.12)' : 'rgba(180,83,9,0.08)',
                 },
               },
             },
