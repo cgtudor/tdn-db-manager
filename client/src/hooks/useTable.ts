@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTableRows, insertRow, updateRow, deleteRow, bulkDeleteRows } from '../api/databases';
 import { useState, useCallback } from 'react';
-import type { GridFilterModel } from '@mui/x-data-grid';
+import type { FilterModel } from '../components/data/DataGrid';
 
-const EMPTY_FILTER_MODEL: GridFilterModel = { items: [] };
+const EMPTY_FILTER_MODEL: FilterModel = { items: [] };
 
 export function useTable(db: string | undefined, table: string | undefined) {
   const queryClient = useQueryClient();
@@ -13,9 +13,9 @@ export function useTable(db: string | undefined, table: string | undefined) {
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
 
   // Filter model (controlled, passed to DataGrid)
-  const [filterModel, setFilterModel] = useState<GridFilterModel>(EMPTY_FILTER_MODEL);
+  const [filterModel, setFilterModel] = useState<FilterModel>(EMPTY_FILTER_MODEL);
 
-  // Filter values that drive the query (updated when MUI fires onFilterModelChange after its own debounce)
+  // Filter values that drive the query
   const [committedFilters, setCommittedFilters] = useState<Record<string, string>>({});
   const [committedSearch, setCommittedSearch] = useState('');
 
@@ -27,7 +27,7 @@ export function useTable(db: string | undefined, table: string | undefined) {
       search: committedSearch || undefined,
     }),
     enabled: !!db && !!table,
-    placeholderData: (prev) => prev,  // keep showing old data while fetching, prevents grid flicker
+    placeholderData: (prev) => prev,
   });
 
   const invalidate = () => {
@@ -65,11 +65,9 @@ export function useTable(db: string | undefined, table: string | undefined) {
     setPage(1);
   };
 
-  const handleFilterChange = useCallback((model: GridFilterModel) => {
+  const handleFilterChange = useCallback((model: FilterModel) => {
     setFilterModel(model);
 
-    // MUI's quick filter already debounces via slotProps.quickFilter.debounceMs,
-    // so we commit immediately when MUI fires onFilterModelChange.
     const filters: Record<string, string> = {};
     for (const item of model.items) {
       if (item.field && item.value != null && item.value !== '') {
