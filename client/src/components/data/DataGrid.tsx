@@ -250,8 +250,28 @@ export function DataGrid({
                 fontSize: '0.75rem',
                 color: textSecondary,
                 textTransform: 'none',
-                fontFamily: 'inherit',
+                fontFamily: "'Source Sans 3', system-ui, sans-serif",
+                '&:hover': {
+                  backgroundColor: hoverBg,
+                  color: isDark ? '#f5efe8' : '#1c1410',
+                },
               },
+            },
+            // Column menu & filter panel
+            '& .MuiDataGrid-menuIcon': {
+              color: textSecondary,
+            },
+            '& .MuiDataGrid-iconButtonContainer': {
+              '& .MuiIconButton-root': {
+                color: textSecondary,
+                '&:hover': {
+                  backgroundColor: hoverBg,
+                },
+              },
+            },
+            // Row striping
+            '& .MuiDataGrid-row:nth-of-type(odd)': {
+              backgroundColor: isDark ? 'rgba(42,36,32,0.4)' : 'rgba(245,240,232,0.4)',
             },
             // Scrollbar
             '& .MuiDataGrid-scrollbar': {
@@ -261,7 +281,7 @@ export function DataGrid({
               },
               '&::-webkit-scrollbar-thumb': {
                 borderRadius: 3,
-                backgroundColor: isDark ? '#4b5563' : '#d1d5db',
+                backgroundColor: isDark ? '#4d3f32' : '#d4c9b8',
               },
             },
             // No rows overlay
