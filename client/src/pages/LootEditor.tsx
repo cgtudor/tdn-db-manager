@@ -22,6 +22,15 @@ const TIER_COLORS: Record<string, string> = {
   e: 'bg-tier-e border-pink-300',
 };
 
+const TIER_DOTS: Record<string, string> = {
+  a: 'bg-amber-500',
+  b: 'bg-blue-500',
+  c: 'bg-green-500',
+  cplus: 'bg-emerald-500',
+  d: 'bg-violet-500',
+  e: 'bg-pink-500',
+};
+
 export function LootEditor() {
   const queryClient = useQueryClient();
   const { isEditor } = useAuth();
@@ -158,15 +167,22 @@ export function LootEditor() {
           return (
             <div
               key={tier}
-              className={`rounded-lg border-2 ${TIER_COLORS[tier]} min-h-[300px] flex flex-col`}
-              onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-primary'); }}
-              onDragLeave={e => { e.currentTarget.classList.remove('ring-2', 'ring-primary'); }}
-              onDrop={e => { e.currentTarget.classList.remove('ring-2', 'ring-primary'); handleDrop(tier); }}
+              className={`rounded-lg border-2 ${TIER_COLORS[tier]} min-h-[300px] flex flex-col transition-shadow data-[drag-over]:ring-2 data-[drag-over]:ring-primary data-[drag-over]:shadow-lg`}
+              onDragOver={e => { e.preventDefault(); e.currentTarget.dataset.dragOver = ''; }}
+              onDragLeave={e => { delete e.currentTarget.dataset.dragOver; }}
+              onDrop={e => { delete e.currentTarget.dataset.dragOver; handleDrop(tier); }}
             >
               {/* Tier header */}
               <div className="px-3 py-2 border-b border-black/10 flex items-center justify-between">
-                <span className="font-semibold text-sm">{tierLabel(tier)}</span>
-                <Badge>{tierItems.length}</Badge>
+                <span className="font-semibold text-sm flex items-center gap-1.5">
+                  <span className={`w-2.5 h-2.5 rounded-full ${TIER_DOTS[tier]}`} />
+                  {tierLabel(tier)}
+                </span>
+                <Badge>
+                  {searchQuery && tierItems.length !== (items?.[tier]?.length ?? 0)
+                    ? `${tierItems.length}/${items?.[tier]?.length ?? 0}`
+                    : tierItems.length}
+                </Badge>
               </div>
 
               {/* Items */}
