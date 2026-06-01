@@ -110,7 +110,7 @@ export function StoreExplorer() {
       {/* Right panel - detail */}
       <div className="flex-1 overflow-y-auto p-4">
         {selectedId === null ? (
-          <EmptyState icon={Store} title="Select a store" description="Choose a store from the list to see its inventory" />
+          <EmptyState icon={Store} title="Select a merchant" description="Choose a store from the list to inspect their wares" />
         ) : detailLoading ? (
           <Loading />
         ) : !detail ? (

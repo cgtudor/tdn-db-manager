@@ -344,7 +344,7 @@ export function LiveDashboard() {
             </h2>
             <div className="rounded-lg border border-border bg-surface overflow-hidden">
               {areas.length === 0 ? (
-                <EmptyState icon={MapPin} title="No active areas" description="No players are online" />
+                <EmptyState icon={MapPin} title="No active areas" description="The realm awaits its adventurers" />
               ) : (
                 <table className="w-full text-sm">
                   <thead>
@@ -387,7 +387,7 @@ export function LiveDashboard() {
             </h2>
             <div className="rounded-lg border border-border bg-surface overflow-hidden">
               {players.length === 0 ? (
-                <EmptyState icon={Users} title="No players online" />
+                <EmptyState icon={Users} title="The realm is quiet" description="No adventurers are currently online" />
               ) : (
                 <table className="w-full text-sm">
                   <thead>

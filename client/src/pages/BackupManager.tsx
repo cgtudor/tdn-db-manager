@@ -38,7 +38,7 @@ export function BackupManager() {
       <h1 className="text-2xl font-bold text-text">Backup Manager</h1>
       <p className="text-sm text-text-secondary">Backups are created automatically before database edits.</p>
 
-      {backups?.length === 0 && <EmptyState icon={Shield} title="No backups yet" description="Backups will appear here after database edits" />}
+      {backups?.length === 0 && <EmptyState icon={Shield} title="No backups yet" description="Safeguards will appear here once the first edit is made" />}
 
       {Object.entries(grouped).map(([db, dbBackups]) => (
         <div key={db}>

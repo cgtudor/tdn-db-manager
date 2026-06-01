@@ -52,7 +52,7 @@ export function SearchResults() {
       {isLoading && <Loading />}
 
       {results && results.length === 0 && (
-        <EmptyState icon={Search} title="No results found" description={`No matches for "${submittedQuery}"`} />
+        <EmptyState icon={Search} title="No treasures found" description={`Nothing matching "${submittedQuery}" in any database`} />
       )}
 
       {Object.entries(grouped).map(([db, dbResults]) => (

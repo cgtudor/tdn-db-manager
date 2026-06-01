@@ -153,7 +153,7 @@ export function IngredientExplorer() {
       {/* Right panel - detail */}
       <div className="flex-1 overflow-y-auto p-4">
         {selectedId === null ? (
-          <EmptyState icon={Leaf} title="Select an ingredient" description="Choose an ingredient from the list to see its details" />
+          <EmptyState icon={Leaf} title="Select a reagent" description="Choose an ingredient from the list to examine its properties" />
         ) : detailLoading ? (
           <Loading />
         ) : !detail ? (

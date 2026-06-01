@@ -211,7 +211,7 @@ export function CraftingEditor() {
       {/* Right panel: Recipe detail */}
       <div className="flex-1 overflow-y-auto">
         {!selectedRecipeId && !showCreateForm && (
-          <EmptyState icon={FlaskConical} title="Select a recipe" description="Choose a recipe from the list to view details" />
+          <EmptyState icon={FlaskConical} title="Select a recipe" description="Choose a recipe from the list to examine its components" />
         )}
 
         {showCreateForm && <CreateRecipeForm professions={professions || []} recipeTypes={recipeTypes || []} onSubmit={handleCreate} onCancel={() => setShowCreateForm(false)} isLoading={createMutation.isPending} />}
