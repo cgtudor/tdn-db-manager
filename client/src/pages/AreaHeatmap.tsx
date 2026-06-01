@@ -59,13 +59,8 @@ function MiniBar({ value, max, className = '' }: { value: number; max: number; c
 }
 
 function DailyChart({ data }: { data: { date: string; totalVisits: number }[] }) {
-  // Only show days from the first day that has data
-  const firstDataIdx = data.findIndex(d => d.totalVisits > 0);
-  const visibleData = firstDataIdx >= 0 ? data.slice(firstDataIdx) : data;
-  const max = Math.max(...visibleData.map(d => d.totalVisits), 1);
-  const totalVisits = visibleData.reduce((s, d) => s + d.totalVisits, 0);
-
-  if (totalVisits === 0) return null;
+  const max = Math.max(...data.map(d => d.totalVisits), 1);
+  const totalVisits = data.reduce((s, d) => s + d.totalVisits, 0);
 
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
@@ -76,30 +71,36 @@ function DailyChart({ data }: { data: { date: string; totalVisits: number }[] })
         </h3>
         <span className="text-xs text-text-muted">{totalVisits.toLocaleString()} total</span>
       </div>
-      <div className="flex items-end gap-px h-32 border-b border-border/50">
-        {visibleData.map((d, i) => {
-          const height = (d.totalVisits / max) * 100;
-          const isToday = i === visibleData.length - 1;
-          return (
-            <div
-              key={d.date}
-              className="flex-1 flex flex-col items-center justify-end group relative min-w-[3px]"
-            >
+      {totalVisits === 0 ? (
+        <div className="flex items-center justify-center h-32 text-xs text-text-muted">
+          No daily transition data yet. Data accumulates as players move between areas.
+        </div>
+      ) : (
+        <div className="flex items-end gap-px h-32 border-b border-border/50">
+          {data.map((d, i) => {
+            const height = (d.totalVisits / max) * 100;
+            const isToday = i === data.length - 1;
+            return (
               <div
-                className={`w-full rounded-t transition-colors ${isToday ? 'bg-indigo-400' : 'bg-indigo-500/70 group-hover:bg-indigo-400'}`}
-                style={{ height: `${Math.max(height, d.totalVisits > 0 ? 6 : 0)}%` }}
-              />
-              <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
-                <div className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
-                  {d.date}: {d.totalVisits.toLocaleString()} visits
+                key={d.date}
+                className="flex-1 flex flex-col items-center justify-end group relative min-w-[3px]"
+              >
+                <div
+                  className={`w-full rounded-t transition-colors ${isToday ? 'bg-indigo-400' : 'bg-indigo-500/70 group-hover:bg-indigo-400'}`}
+                  style={{ height: `${Math.max(height, d.totalVisits > 0 ? 6 : 0)}%` }}
+                />
+                <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
+                    {d.date}: {d.totalVisits.toLocaleString()} visits
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
       <div className="flex justify-between mt-1 text-[10px] text-text-muted">
-        <span>{visibleData[0]?.date}</span>
+        <span>{data[0]?.date}</span>
         <span>Today</span>
       </div>
     </div>
