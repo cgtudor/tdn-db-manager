@@ -3,6 +3,7 @@ import cytoscape, { Core, EventObject } from 'cytoscape';
 import type { AreaGraphData, AreaGraphNode, AreaAnalytics } from '../api/live';
 import {
   Maximize2, ZoomIn, ZoomOut, RotateCcw, Search, X, Palette,
+  Filter, Layers, Waypoints, EyeOff, Eye, ChevronDown,
 } from 'lucide-react';
 
 // Region colors (matching the map_generator palette)
@@ -45,13 +46,18 @@ const REGION_COLORS: Record<string, string> = {
   'Uncategorized': '#808080',
 };
 
+// Regions to hide by default (system/meta areas that clutter the map)
+const HIDDEN_BY_DEFAULT = new Set([
+  'OOC Areas', 'System Areas', 'Event/Dream Areas', 'Transit', 'Afterlife', 'Planar',
+]);
+
 function heatHexColor(ratio: number): string {
-  if (ratio > 0.8) return '#ef4444';   // red-500
-  if (ratio > 0.6) return '#f97316';   // orange-500
-  if (ratio > 0.4) return '#eab308';   // yellow-500
-  if (ratio > 0.2) return '#22c55e';   // green-500
-  if (ratio > 0.05) return '#10b981';  // emerald-500
-  return '#6b7280';                     // gray-500
+  if (ratio > 0.8) return '#ef4444';
+  if (ratio > 0.6) return '#f97316';
+  if (ratio > 0.4) return '#eab308';
+  if (ratio > 0.2) return '#22c55e';
+  if (ratio > 0.05) return '#10b981';
+  return '#6b7280';
 }
 
 type ColorMode = 'heat' | 'region';
@@ -72,27 +78,23 @@ const cytoscapeStyles: cytoscape.StylesheetStyle[] = [
       'label': '',
       'text-valign': 'bottom',
       'text-halign': 'center',
-      'font-size': '8px',
-      'text-margin-y': 5,
+      'font-size': '7px',
+      'text-margin-y': 4,
       'background-color': 'data(color)',
       'border-width': 2,
       'border-color': '#444',
       'width': 'data(size)',
       'height': 'data(size)',
       'text-outline-color': '#1a1a2e',
-      'text-outline-width': 1,
-      'text-max-width': '120px',
+      'text-outline-width': 2,
+      'text-max-width': '100px',
       'text-wrap': 'ellipsis',
-      'color': '#fff',
+      'color': '#eee',
     },
   },
   {
     selector: 'node[isDungeon]',
-    style: {
-      'shape': 'diamond',
-      'border-color': '#8B0000',
-      'border-width': 3,
-    },
+    style: { 'shape': 'diamond', 'border-color': '#8B0000', 'border-width': 3 },
   },
   {
     selector: 'node[areaType = "interior"]',
@@ -104,80 +106,58 @@ const cytoscapeStyles: cytoscape.StylesheetStyle[] = [
   },
   {
     selector: 'node[connections = 0]',
-    style: { 'border-style': 'dashed', 'opacity': 0.5 },
+    style: { 'border-style': 'dashed', 'opacity': 0.4 },
   },
   {
     selector: 'node:selected',
-    style: {
-      'border-color': '#FFD700',
-      'border-width': 4,
-      'label': 'data(label)',
-      'z-index': 9999,
-    },
+    style: { 'border-color': '#FFD700', 'border-width': 4, 'label': 'data(label)', 'z-index': 9999 },
   },
   {
     selector: 'node.highlighted',
-    style: {
-      'border-color': '#00BFFF',
-      'border-width': 3,
-      'label': 'data(label)',
-      'opacity': 1,
-    },
+    style: { 'border-color': '#00BFFF', 'border-width': 3, 'label': 'data(label)', 'opacity': 1 },
   },
   {
     selector: 'node.dimmed',
-    style: { 'opacity': 0.15 },
+    style: { 'opacity': 0.1 },
   },
   {
     selector: 'node.search-match',
-    style: {
-      'border-color': '#FFD700',
-      'border-width': 3,
-      'label': 'data(label)',
-      'opacity': 1,
-    },
+    style: { 'border-color': '#FFD700', 'border-width': 3, 'label': 'data(label)', 'opacity': 1 },
   },
   {
     selector: 'node.hover-label',
     style: { 'label': 'data(label)' },
   },
   {
+    selector: 'node.show-label',
+    style: { 'label': 'data(label)' },
+  },
+  {
     selector: 'edge',
     style: {
-      'width': 1.5,
-      'line-color': '#555',
-      'target-arrow-color': '#555',
+      'width': 1,
+      'line-color': '#444',
+      'target-arrow-color': '#444',
       'target-arrow-shape': 'triangle',
-      'arrow-scale': 0.7,
+      'arrow-scale': 0.6,
       'curve-style': 'bezier',
-      'opacity': 0.5,
+      'opacity': 0.35,
     },
   },
   {
     selector: 'edge.bidirectional',
-    style: {
-      'source-arrow-shape': 'triangle',
-      'source-arrow-color': '#555',
-    },
+    style: { 'source-arrow-shape': 'triangle', 'source-arrow-color': '#444' },
   },
   {
     selector: 'edge.highlighted',
     style: {
-      'line-color': '#00BFFF',
-      'target-arrow-color': '#00BFFF',
-      'source-arrow-color': '#00BFFF',
-      'width': 3,
-      'opacity': 1,
-      'z-index': 999,
+      'line-color': '#00BFFF', 'target-arrow-color': '#00BFFF', 'source-arrow-color': '#00BFFF',
+      'width': 3, 'opacity': 1, 'z-index': 999,
     },
   },
   {
     selector: 'edge.dimmed',
-    style: { 'opacity': 0.08 },
-  },
-  {
-    selector: 'node.show-label',
-    style: { 'label': 'data(label)' },
+    style: { 'opacity': 0.04 },
   },
 ];
 
@@ -193,17 +173,33 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
   const [colorMode, setColorMode] = useState<ColorMode>('heat');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [showOrphans, setShowOrphans] = useState(false);
+  const [regionDropdownOpen, setRegionDropdownOpen] = useState(false);
+  const [selectedRegions, setSelectedRegions] = useState<Set<string>>(() => {
+    const all = new Set(graphData.regions);
+    for (const r of HIDDEN_BY_DEFAULT) all.delete(r);
+    return all;
+  });
   const [tooltip, setTooltip] = useState<TooltipState>({
     visible: false, x: 0, y: 0, node: null, analytics: null,
   });
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Build a lookup from areaTag -> analytics
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setRegionDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
   const analyticsMap = useMemo(() => {
     const map = new Map<string, AreaAnalytics>();
     if (analytics) {
-      for (const a of analytics) {
-        map.set(a.areaTag, a);
-      }
+      for (const a of analytics) map.set(a.areaTag, a);
     }
     return map;
   }, [analytics]);
@@ -213,37 +209,46 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
     return Math.max(...analytics.map(a => a[timeRange]), 1);
   }, [analytics, timeRange]);
 
-  // Get node color based on mode
+  // Filter nodes based on region + orphan filters
+  const filteredNodes = useMemo(() => {
+    return graphData.nodes.filter(n => {
+      if (!selectedRegions.has(n.region)) return false;
+      if (!showOrphans && n.connections === 0) return false;
+      return true;
+    });
+  }, [graphData.nodes, selectedRegions, showOrphans]);
+
+  const filteredNodeIds = useMemo(() => new Set(filteredNodes.map(n => n.id)), [filteredNodes]);
+
+  const filteredLinks = useMemo(() => {
+    return graphData.links.filter(l => filteredNodeIds.has(l.source) && filteredNodeIds.has(l.target));
+  }, [graphData.links, filteredNodeIds]);
+
   const getNodeColor = useCallback((node: AreaGraphNode): string => {
-    if (colorMode === 'region') {
-      return REGION_COLORS[node.region] || '#808080';
-    }
-    // Heat mode - color by visit count
+    if (colorMode === 'region') return REGION_COLORS[node.region] || '#808080';
     const a = analyticsMap.get(node.tag);
-    if (!a) return '#374151'; // gray-700 for untracked areas
+    if (!a) return '#374151';
     const val = a[timeRange];
     if (val === 0) return '#374151';
     return heatHexColor(val / maxVisits);
   }, [colorMode, analyticsMap, timeRange, maxVisits]);
 
-  // Get node size based on visits or connections
   const getNodeSize = useCallback((node: AreaGraphNode): number => {
     if (colorMode === 'heat') {
       const a = analyticsMap.get(node.tag);
       if (!a) return 12;
       const val = a[timeRange];
       if (val === 0) return 10;
-      const ratio = val / maxVisits;
-      return Math.max(12, Math.min(40, 12 + ratio * 28));
+      return Math.max(12, Math.min(40, 12 + (val / maxVisits) * 28));
     }
     return Math.max(12, Math.min(35, 12 + node.connections * 2.5));
   }, [colorMode, analyticsMap, timeRange, maxVisits]);
 
-  // Initialize Cytoscape
+  // Build Cytoscape when filtered data changes
   useEffect(() => {
-    if (!containerRef.current || !graphData) return;
+    if (!containerRef.current) return;
 
-    const nodeElements = graphData.nodes.map(node => ({
+    const nodeElements = filteredNodes.map(node => ({
       data: {
         id: node.id,
         label: node.name,
@@ -259,7 +264,7 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
 
     // Deduplicate edges
     const edgePairs = new Map<string, { forward: boolean; backward: boolean }>();
-    for (const link of graphData.links) {
+    for (const link of filteredLinks) {
       const key = [link.source, link.target].sort().join('|');
       const isForward = link.source < link.target;
       if (!edgePairs.has(key)) edgePairs.set(key, { forward: false, backward: false });
@@ -269,7 +274,7 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
     }
 
     const seenEdges = new Set<string>();
-    const edgeElements = graphData.links
+    const edgeElements = filteredLinks
       .filter(link => {
         const key = [link.source, link.target].sort().join('|');
         if (seenEdges.has(key)) return false;
@@ -279,14 +284,9 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
       .map(link => {
         const key = [link.source, link.target].sort().join('|');
         const pair = edgePairs.get(key)!;
-        const bidir = pair.forward && pair.backward;
         return {
-          data: {
-            id: `${link.source}-${link.target}`,
-            source: link.source,
-            target: link.target,
-          },
-          classes: bidir ? 'bidirectional' : '',
+          data: { id: `${link.source}-${link.target}`, source: link.source, target: link.target },
+          classes: pair.forward && pair.backward ? 'bidirectional' : '',
         };
       });
 
@@ -297,18 +297,16 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
       elements: [...nodeElements, ...edgeElements],
       style: cytoscapeStyles,
       layout: { name: 'preset' },
-      minZoom: 0.05,
-      maxZoom: 5,
-      wheelSensitivity: 0.8,
+      minZoom: 0.02,
+      maxZoom: 6,
+      wheelSensitivity: 0.6,
     });
 
     const cy = cyRef.current;
 
-    // Click node -> select & highlight neighbors
     cy.on('tap', 'node', (event: EventObject) => {
       const nodeId = event.target.id();
       setSelectedNode(nodeId);
-
       cy.elements().removeClass('highlighted dimmed');
       const neighbors = event.target.neighborhood();
       cy.nodes().addClass('dimmed');
@@ -319,7 +317,6 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
       neighbors.nodes().addClass('highlighted');
     });
 
-    // Click background -> deselect
     cy.on('tap', (event: EventObject) => {
       if (event.target === cy) {
         setSelectedNode(null);
@@ -328,7 +325,6 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
       }
     });
 
-    // Hover -> tooltip
     cy.on('mouseover', 'node', (event: EventObject) => {
       event.target.addClass('hover-label');
       const nodeId = event.target.id();
@@ -351,12 +347,11 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
       setTooltip(t => ({ ...t, visible: false }));
     });
 
-    // Zoom-based label visibility
     cy.on('zoom', () => {
       const zoom = cy.zoom();
-      const fontSize = Math.max(4, Math.min(12, 8 / zoom));
+      const fontSize = Math.max(4, Math.min(14, 7 / zoom));
       cy.style().selector('node').style('font-size', `${fontSize}px`).update();
-      if (zoom > 2) {
+      if (zoom > 3.5) {
         cy.nodes().addClass('show-label');
       } else {
         cy.nodes().removeClass('show-label');
@@ -371,15 +366,14 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
         cyRef.current = null;
       }
     };
-  }, [graphData]); // Only rebuild on graph data change
+  }, [filteredNodes, filteredLinks, graphData.nodes, analyticsMap]);
 
-  // Update colors when mode/timeRange/analytics change (without rebuilding the whole graph)
+  // Update colors/sizes without rebuilding the graph
   useEffect(() => {
     const cy = cyRef.current;
-    if (!cy || !graphData) return;
-
+    if (!cy) return;
     cy.batch(() => {
-      for (const node of graphData.nodes) {
+      for (const node of filteredNodes) {
         const cyNode = cy.getElementById(node.id);
         if (cyNode.length > 0) {
           cyNode.data('color', getNodeColor(node));
@@ -387,16 +381,14 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
         }
       }
     });
-  }, [colorMode, timeRange, analyticsMap, maxVisits, getNodeColor, getNodeSize, graphData]);
+  }, [colorMode, timeRange, analyticsMap, maxVisits, getNodeColor, getNodeSize, filteredNodes]);
 
   // Search highlighting
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
-
     cy.nodes().removeClass('search-match');
     if (!searchQuery.trim()) return;
-
     const q = searchQuery.toLowerCase();
     cy.nodes().forEach(node => {
       const label = (node.data('label') || '').toLowerCase();
@@ -409,40 +401,166 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
   }, [searchQuery]);
 
   const fitToView = useCallback(() => {
-    cyRef.current?.animate({ fit: { eles: cyRef.current.nodes(), padding: 50 }, duration: 300 });
+    const cy = cyRef.current;
+    if (!cy) return;
+    const visible = cy.nodes(':visible');
+    if (visible.length > 0) cy.animate({ fit: { eles: visible, padding: 50 }, duration: 300 });
   }, []);
 
   const zoomIn = useCallback(() => {
     const cy = cyRef.current;
-    if (cy) cy.animate({ zoom: { level: cy.zoom() * 1.3, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }, duration: 200 });
+    if (cy) cy.animate({ zoom: { level: cy.zoom() * 1.4, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }, duration: 200 });
   }, []);
 
   const zoomOut = useCallback(() => {
     const cy = cyRef.current;
-    if (cy) cy.animate({ zoom: { level: cy.zoom() / 1.3, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }, duration: 200 });
+    if (cy) cy.animate({ zoom: { level: cy.zoom() / 1.4, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }, duration: 200 });
   }, []);
 
   const resetLayout = useCallback(() => {
     const cy = cyRef.current;
-    if (!cy || !graphData) return;
+    if (!cy) return;
     cy.nodes().forEach(node => {
       const orig = graphData.nodes.find(n => n.id === node.id());
-      if (orig) {
-        node.animate({ position: { x: orig.x, y: -orig.y }, duration: 300 });
-      }
+      if (orig) node.animate({ position: { x: orig.x, y: -orig.y }, duration: 300 });
     });
     setTimeout(() => cy.fit(undefined, 50), 350);
   }, [graphData]);
+
+  // Cluster by region - spread regions into a grid so they don't overlap
+  const clusterByRegion = useCallback(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+
+    // Group nodes by region and compute centroids
+    const regionGroups = new Map<string, { nodes: cytoscape.NodeSingular[]; cx: number; cy: number }>();
+    cy.nodes().forEach(node => {
+      const region = node.data('region') as string;
+      if (!regionGroups.has(region)) regionGroups.set(region, { nodes: [], cx: 0, cy: 0 });
+      regionGroups.get(region)!.nodes.push(node);
+    });
+
+    // Sort regions by size (largest first get center positions)
+    const sorted = [...regionGroups.entries()].sort((a, b) => b[1].nodes.length - a[1].nodes.length);
+
+    // Arrange regions in a grid with generous spacing
+    const cols = Math.ceil(Math.sqrt(sorted.length));
+    const spacing = 1200;
+
+    sorted.forEach(([_region, group], idx) => {
+      const targetX = (idx % cols) * spacing;
+      const targetY = Math.floor(idx / cols) * spacing;
+
+      // Compute current centroid
+      let sumX = 0, sumY = 0;
+      for (const n of group.nodes) {
+        const p = n.position();
+        sumX += p.x;
+        sumY += p.y;
+      }
+      const cx = sumX / group.nodes.length;
+      const cy_ = sumY / group.nodes.length;
+
+      // Shift all nodes by the offset
+      const dx = targetX - cx;
+      const dy = targetY - cy_;
+      for (const n of group.nodes) {
+        const p = n.position();
+        n.animate({ position: { x: p.x + dx, y: p.y + dy }, duration: 400 });
+      }
+    });
+
+    setTimeout(() => cy.fit(undefined, 60), 450);
+  }, []);
+
+  // Spread overlapping nodes apart
+  const spreadNodes = useCallback(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+
+    const nodes = cy.nodes();
+    const minDist = 50;
+    const positions = new Map<string, { x: number; y: number }>();
+    nodes.forEach(n => {
+      const p = n.position();
+      positions.set(n.id(), { x: p.x, y: p.y });
+    });
+
+    for (let iter = 0; iter < 80; iter++) {
+      let moved = false;
+      nodes.forEach(n1 => {
+        const p1 = positions.get(n1.id())!;
+        nodes.forEach(n2 => {
+          if (n1.id() >= n2.id()) return;
+          const p2 = positions.get(n2.id())!;
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < minDist && dist > 0) {
+            const push = (minDist - dist) * 0.4;
+            const px = (dx / dist) * push;
+            const py = (dy / dist) * push;
+            p1.x -= px; p1.y -= py;
+            p2.x += px; p2.y += py;
+            moved = true;
+          } else if (dist === 0) {
+            const angle = Math.random() * Math.PI * 2;
+            p1.x -= Math.cos(angle) * 20;
+            p1.y -= Math.sin(angle) * 20;
+            moved = true;
+          }
+        });
+      });
+      if (!moved) break;
+    }
+
+    nodes.forEach(n => {
+      const p = positions.get(n.id())!;
+      n.animate({ position: p, duration: 300 });
+    });
+  }, []);
 
   const focusSearch = useCallback(() => {
     if (!searchQuery.trim()) return;
     const cy = cyRef.current;
     if (!cy) return;
     const matches = cy.nodes('.search-match');
-    if (matches.length > 0) {
-      cy.animate({ fit: { eles: matches, padding: 80 }, duration: 300 });
-    }
+    if (matches.length > 0) cy.animate({ fit: { eles: matches, padding: 80 }, duration: 300 });
   }, [searchQuery]);
+
+  // Isolate a single region
+  const isolateRegion = useCallback((region: string) => {
+    setSelectedRegions(new Set([region]));
+    setRegionDropdownOpen(false);
+  }, []);
+
+  const toggleRegion = useCallback((region: string) => {
+    setSelectedRegions(prev => {
+      const next = new Set(prev);
+      if (next.has(region)) next.delete(region);
+      else next.add(region);
+      return next;
+    });
+  }, []);
+
+  const selectAllRegions = useCallback(() => {
+    setSelectedRegions(new Set(graphData.regions));
+  }, [graphData.regions]);
+
+  const selectGameplayRegions = useCallback(() => {
+    const all = new Set(graphData.regions);
+    for (const r of HIDDEN_BY_DEFAULT) all.delete(r);
+    setSelectedRegions(all);
+  }, [graphData.regions]);
+
+  // Region counts
+  const regionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const n of graphData.nodes) {
+      counts.set(n.region, (counts.get(n.region) || 0) + 1);
+    }
+    return counts;
+  }, [graphData.nodes]);
 
   // Selected node details
   const selectedNodeData = useMemo(() => {
@@ -450,28 +568,23 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
     const node = graphData.nodes.find(n => n.id === selectedNode);
     if (!node) return null;
     const a = analyticsMap.get(node.tag);
+    const seen = new Set<string>();
     const connections = graphData.links
       .filter(l => l.source === selectedNode || l.target === selectedNode)
       .map(l => {
-        const targetId = l.source === selectedNode ? l.target : l.source;
-        const targetNode = graphData.nodes.find(n => n.id === targetId);
-        return { id: targetId, name: targetNode?.name || targetId, direction: l.direction };
-      });
-    // Deduplicate connections
-    const seen = new Set<string>();
-    const unique = connections.filter(c => {
-      if (seen.has(c.id)) return false;
-      seen.add(c.id);
-      return true;
-    });
-    return { node, analytics: a, connections: unique };
+        const tid = l.source === selectedNode ? l.target : l.source;
+        const tn = graphData.nodes.find(n => n.id === tid);
+        return { id: tid, name: tn?.name || tid, direction: l.direction };
+      })
+      .filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
+    return { node, analytics: a, connections };
   }, [selectedNode, graphData, analyticsMap]);
 
   return (
-    <div className="rounded-lg border border-border bg-surface overflow-hidden" style={{ height: 'calc(100vh - 340px)', minHeight: '500px' }}>
+    <div className="rounded-lg border border-border bg-surface overflow-hidden relative" style={{ height: 'calc(100vh - 340px)', minHeight: '500px' }}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-surface-dim">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-surface-dim gap-2">
+        <div className="flex items-center gap-1">
           <button onClick={fitToView} className="p-1.5 rounded hover:bg-surface-hover text-text-muted hover:text-text" title="Fit to view">
             <Maximize2 className="h-3.5 w-3.5" />
           </button>
@@ -484,7 +597,18 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
           <button onClick={resetLayout} className="p-1.5 rounded hover:bg-surface-hover text-text-muted hover:text-text" title="Reset positions">
             <RotateCcw className="h-3.5 w-3.5" />
           </button>
-          <div className="w-px h-4 bg-border mx-1" />
+
+          <div className="w-px h-4 bg-border mx-0.5" />
+
+          <button onClick={clusterByRegion} className="flex items-center gap-1 px-2 py-1 text-xs rounded text-text-muted hover:text-text hover:bg-surface-hover" title="Separate regions into clusters">
+            <Layers className="h-3 w-3" />Cluster
+          </button>
+          <button onClick={spreadNodes} className="flex items-center gap-1 px-2 py-1 text-xs rounded text-text-muted hover:text-text hover:bg-surface-hover" title="Push overlapping nodes apart">
+            <Waypoints className="h-3 w-3" />Spread
+          </button>
+
+          <div className="w-px h-4 bg-border mx-0.5" />
+
           <button
             onClick={() => setColorMode(m => m === 'heat' ? 'region' : 'heat')}
             className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
@@ -495,6 +619,69 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
             <Palette className="h-3 w-3" />
             {colorMode === 'heat' ? 'Heat' : 'Region'}
           </button>
+
+          <button
+            onClick={() => setShowOrphans(v => !v)}
+            className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+              showOrphans ? 'bg-surface-hover text-text' : 'text-text-muted hover:text-text'
+            }`}
+            title={showOrphans ? 'Hide disconnected areas' : 'Show disconnected areas'}
+          >
+            {showOrphans ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+            Orphans
+          </button>
+
+          {/* Region filter dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setRegionDropdownOpen(v => !v)}
+              className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                selectedRegions.size < graphData.regions.length ? 'bg-indigo-500/20 text-indigo-300' : 'text-text-muted hover:text-text'
+              }`}
+            >
+              <Filter className="h-3 w-3" />
+              Regions ({selectedRegions.size}/{graphData.regions.length})
+              <ChevronDown className="h-3 w-3" />
+            </button>
+
+            {regionDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 z-50 bg-surface border border-border rounded-lg shadow-xl w-72 max-h-80 overflow-y-auto">
+                <div className="sticky top-0 bg-surface border-b border-border px-3 py-2 flex gap-1">
+                  <button onClick={selectAllRegions} className="px-2 py-0.5 text-[10px] rounded bg-surface-dim text-text-muted hover:text-text">All</button>
+                  <button onClick={selectGameplayRegions} className="px-2 py-0.5 text-[10px] rounded bg-surface-dim text-text-muted hover:text-text">Gameplay</button>
+                  <button onClick={() => setSelectedRegions(new Set())} className="px-2 py-0.5 text-[10px] rounded bg-surface-dim text-text-muted hover:text-text">None</button>
+                </div>
+                <div className="p-1">
+                  {graphData.regions
+                    .slice()
+                    .sort((a, b) => (regionCounts.get(b) || 0) - (regionCounts.get(a) || 0))
+                    .map(region => (
+                      <div key={region} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-surface-hover group">
+                        <input
+                          type="checkbox"
+                          checked={selectedRegions.has(region)}
+                          onChange={() => toggleRegion(region)}
+                          className="rounded border-border"
+                        />
+                        <div
+                          className="w-2.5 h-2.5 rounded-sm shrink-0"
+                          style={{ backgroundColor: REGION_COLORS[region] || '#808080' }}
+                        />
+                        <span className="text-xs text-text flex-1 truncate">{region}</span>
+                        <span className="text-[10px] text-text-muted tabular-nums">{regionCounts.get(region) || 0}</span>
+                        <button
+                          onClick={() => isolateRegion(region)}
+                          className="text-[10px] text-text-muted hover:text-primary opacity-0 group-hover:opacity-100 px-1"
+                          title="Show only this region"
+                        >
+                          solo
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -506,7 +693,7 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && focusSearch()}
-              className="pl-6 pr-6 py-1 text-xs rounded border border-border bg-surface text-text w-48 focus:outline-none focus:ring-1 focus:ring-primary"
+              className="pl-6 pr-6 py-1 text-xs rounded border border-border bg-surface text-text w-44 focus:outline-none focus:ring-1 focus:ring-primary"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text">
@@ -514,50 +701,33 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
               </button>
             )}
           </div>
-          <span className="text-[10px] text-text-muted tabular-nums">
-            {graphData.stats.totalAreas} areas / {graphData.stats.totalLinks} links
+          <span className="text-[10px] text-text-muted tabular-nums whitespace-nowrap">
+            {filteredNodes.length} / {graphData.stats.totalAreas}
           </span>
         </div>
       </div>
 
       {/* Graph + optional details panel */}
       <div className="flex h-[calc(100%-36px)]">
-        {/* Cytoscape canvas */}
         <div ref={containerRef} className="flex-1" />
 
-        {/* Details sidebar (shown when node selected) */}
         {selectedNodeData && (
           <div className="w-64 border-l border-border bg-surface-dim overflow-y-auto p-3 text-xs">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-semibold text-text truncate pr-2">{selectedNodeData.node.name}</h4>
               <button
-                onClick={() => {
-                  setSelectedNode(null);
-                  cyRef.current?.elements().removeClass('highlighted dimmed');
-                }}
-                className="text-text-muted hover:text-text"
+                onClick={() => { setSelectedNode(null); cyRef.current?.elements().removeClass('highlighted dimmed'); }}
+                className="text-text-muted hover:text-text shrink-0"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
 
             <div className="space-y-1.5 mb-3">
-              <div className="flex justify-between">
-                <span className="text-text-muted">ResRef</span>
-                <span className="font-mono text-text">{selectedNodeData.node.id}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-text-muted">Region</span>
-                <span className="text-text">{selectedNodeData.node.region}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-text-muted">Type</span>
-                <span className="text-text">{selectedNodeData.node.areaType}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-text-muted">Size</span>
-                <span className="text-text">{selectedNodeData.node.width}x{selectedNodeData.node.height}</span>
-              </div>
+              <div className="flex justify-between"><span className="text-text-muted">ResRef</span><span className="font-mono text-text">{selectedNodeData.node.id}</span></div>
+              <div className="flex justify-between"><span className="text-text-muted">Region</span><span className="text-text">{selectedNodeData.node.region}</span></div>
+              <div className="flex justify-between"><span className="text-text-muted">Type</span><span className="text-text">{selectedNodeData.node.areaType}</span></div>
+              <div className="flex justify-between"><span className="text-text-muted">Size</span><span className="text-text">{selectedNodeData.node.width}x{selectedNodeData.node.height}</span></div>
             </div>
 
             {selectedNodeData.analytics && (
@@ -594,9 +764,7 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
                           const cy = cyRef.current;
                           if (cy) {
                             const n = cy.getElementById(c.id);
-                            if (n.length > 0) {
-                              cy.animate({ center: { eles: n }, zoom: 1.5, duration: 300 });
-                            }
+                            if (n.length > 0) cy.animate({ center: { eles: n }, zoom: 1.5, duration: 300 });
                           }
                         }}
                         className="text-left text-primary hover:underline truncate"
@@ -614,10 +782,7 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
 
       {/* Floating tooltip */}
       {tooltip.visible && tooltip.node && (
-        <div
-          className="fixed z-50 pointer-events-none"
-          style={{ left: tooltip.x + 15, top: tooltip.y - 10 }}
-        >
+        <div className="fixed z-50 pointer-events-none" style={{ left: tooltip.x + 15, top: tooltip.y - 10 }}>
           <div className="bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-xl max-w-xs">
             <div className="font-semibold mb-0.5">{tooltip.node.name}</div>
             <div className="text-gray-400 font-mono text-[10px] mb-1">{tooltip.node.id}</div>
@@ -637,7 +802,7 @@ export function AreaMapView({ graphData, analytics, timeRange }: AreaMapViewProp
         </div>
       )}
 
-      {/* Legend (heat mode) */}
+      {/* Legend */}
       {colorMode === 'heat' && (
         <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-surface/90 backdrop-blur-sm border border-border rounded px-2 py-1">
           <span className="text-[10px] text-text-muted">Visits:</span>
