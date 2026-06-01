@@ -161,7 +161,7 @@ export function LootEditor() {
       </div>
 
       {/* Tier columns */}
-      <div className="grid grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {TIERS.map(tier => {
           const tierItems = filteredItems(tier);
           return (

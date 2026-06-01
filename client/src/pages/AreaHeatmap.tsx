@@ -259,7 +259,7 @@ export function AreaHeatmap() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-lg border border-border bg-surface p-4">
           <div className="flex items-center gap-2 text-text-muted text-xs font-medium uppercase tracking-wider">
             <TrendingUp className="h-3.5 w-3.5" /> Visits Today
@@ -335,11 +335,11 @@ export function AreaHeatmap() {
           </div>
         </div>
       ) : (
-        <div className="rounded-lg border border-border bg-surface overflow-hidden">
+        <div className="rounded-lg border border-border bg-surface overflow-x-auto">
           {sortedAreas.length === 0 ? (
             <EmptyState icon={Map} title="No area data" />
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-border bg-surface-dim text-text-secondary text-left">
                   <SortHeader label="Area" field="areaName" current={sortField} dir={sortDir} onClick={toggleSort} />
