@@ -4,6 +4,8 @@ import { getAuditLog } from '../api/admin';
 import { Loading } from '../components/shared/Loading';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 import { ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
 import { EmptyState } from '../components/shared/EmptyState';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,25 +34,24 @@ export function AuditLog() {
       <h1 className="text-2xl font-bold text-text">Audit Log</h1>
 
       <div className="flex gap-2">
-        <input
+        <Input
           value={databaseFilter}
           onChange={e => { setDatabaseFilter(e.target.value); setPage(1); }}
           placeholder="Filter by database..."
-          className="px-3 py-1.5 text-sm border border-border rounded-md bg-surface"
         />
-        <select
+        <Select
           value={actionFilter}
           onChange={e => { setActionFilter(e.target.value); setPage(1); }}
-          className="px-3 py-1.5 text-sm border border-border rounded-md bg-surface"
-        >
-          <option value="">All actions</option>
-          <option value="INSERT">INSERT</option>
-          <option value="UPDATE">UPDATE</option>
-          <option value="DELETE">DELETE</option>
-          <option value="BULK_DELETE">BULK_DELETE</option>
-          <option value="MOVE">MOVE</option>
-          <option value="RESTORE">RESTORE</option>
-        </select>
+          options={[
+            { value: 'INSERT', label: 'INSERT' },
+            { value: 'UPDATE', label: 'UPDATE' },
+            { value: 'DELETE', label: 'DELETE' },
+            { value: 'BULK_DELETE', label: 'BULK_DELETE' },
+            { value: 'MOVE', label: 'MOVE' },
+            { value: 'RESTORE', label: 'RESTORE' },
+          ]}
+          placeholder="All actions"
+        />
       </div>
 
       {data?.data.length === 0 && <EmptyState icon={ClipboardList} title="No audit entries" />}

@@ -175,19 +175,16 @@ export function IngredientExplorer() {
                 {/* Tier */}
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-text-secondary">Tier</span>
-                  <select
+                  <Select
                     value={detail.ingredient_tier ?? ''}
                     onChange={e => {
                       const val = e.target.value ? parseInt(e.target.value, 10) : null;
                       updateMutation.mutate({ id: detail.ingredient_id, data: { ingredient_tier: val } });
                     }}
-                    className="px-2 py-1 text-sm border border-border rounded bg-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  >
-                    <option value="">None</option>
-                    {[1, 2, 3, 4, 5].map(t => (
-                      <option key={t} value={t}>Tier {TIER_LABELS[t]}</option>
-                    ))}
-                  </select>
+                    className="text-sm !py-1"
+                    options={[1, 2, 3, 4, 5].map(t => ({ value: t, label: `Tier ${TIER_LABELS[t]}` }))}
+                    placeholder="None"
+                  />
                 </div>
 
                 {/* Profession Source */}
@@ -203,21 +200,19 @@ export function IngredientExplorer() {
                         <FlaskConical className="h-3.5 w-3.5 text-blue-500" />
                       )
                     )}
-                    <select
+                    <Select
                       value={detail.source.profession_id ?? ''}
                       onChange={e => {
                         const val = e.target.value ? parseInt(e.target.value, 10) : null;
                         updateMutation.mutate({ id: detail.ingredient_id, data: { profession_id: val } });
                       }}
-                      className="px-2 py-1 text-sm border border-border rounded bg-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    >
-                      <option value="">None (no drop source)</option>
-                      {professions?.map(p => (
-                        <option key={p.profession_id} value={p.profession_id}>
-                          {p.profession_name} ({PROFESSION_TYPE_LABELS[p.profession_type ?? ''] ?? p.profession_type})
-                        </option>
-                      ))}
-                    </select>
+                      className="text-sm !py-1"
+                      options={professions?.map(p => ({
+                        value: p.profession_id,
+                        label: `${p.profession_name} (${PROFESSION_TYPE_LABELS[p.profession_type ?? ''] ?? p.profession_type})`,
+                      })) || []}
+                      placeholder="None (no drop source)"
+                    />
                   </div>
                 </div>
               </div>

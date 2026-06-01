@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getUsers, setUserRole } from '../api/admin';
 import { Loading } from '../components/shared/Loading';
 import { Badge } from '../components/ui/Badge';
+import { Select } from '../components/ui/Select';
 import { useAuth } from '../hooks/useAuth';
 import type { UserRole } from '../types';
 import { formatDistanceToNow } from 'date-fns';
@@ -56,17 +57,18 @@ export function UserManager() {
                   {u.discord_id === currentUser?.id ? (
                     <Badge variant={ROLE_BADGES[u.role]}>{u.role}</Badge>
                   ) : (
-                    <select
+                    <Select
                       value={u.role}
                       onChange={e => roleMutation.mutate({ discordId: u.discord_id, role: e.target.value })}
-                      className="px-2 py-1 text-sm border border-border rounded bg-surface"
+                      className="text-sm !py-1"
                       disabled={roleMutation.isPending}
-                    >
-                      <option value="admin">admin</option>
-                      <option value="dm">dungeon master</option>
-                      <option value="editor">editor</option>
-                      <option value="viewer">viewer</option>
-                    </select>
+                      options={[
+                        { value: 'admin', label: 'admin' },
+                        { value: 'dm', label: 'dungeon master' },
+                        { value: 'editor', label: 'editor' },
+                        { value: 'viewer', label: 'viewer' },
+                      ]}
+                    />
                   )}
                 </td>
                 <td className="px-4 py-2.5 text-text-muted text-xs">

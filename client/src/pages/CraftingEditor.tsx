@@ -153,22 +153,20 @@ export function CraftingEditor() {
             />
           </div>
           <div className="flex gap-2">
-            <select
-              value={professionFilter || ''}
+            <Select
+              className="flex-1 text-xs !py-1"
+              value={professionFilter ?? ''}
               onChange={e => { setProfessionFilter(e.target.value ? parseInt(e.target.value) : undefined); setPage(1); }}
-              className="flex-1 px-2 py-1 text-xs border border-border rounded bg-surface"
-            >
-              <option value="">All professions</option>
-              {professions?.map(p => <option key={p.profession_id} value={p.profession_id}>{p.profession_name}</option>)}
-            </select>
-            <select
-              value={typeFilter || ''}
+              options={professions?.map(p => ({ value: p.profession_id, label: p.profession_name })) || []}
+              placeholder="All professions"
+            />
+            <Select
+              className="flex-1 text-xs !py-1"
+              value={typeFilter ?? ''}
               onChange={e => { setTypeFilter(e.target.value ? parseInt(e.target.value) : undefined); setPage(1); }}
-              className="flex-1 px-2 py-1 text-xs border border-border rounded bg-surface"
-            >
-              <option value="">All types</option>
-              {recipeTypes?.map(t => <option key={t.recipe_type_id} value={t.recipe_type_id}>{t.recipe_type_name}</option>)}
-            </select>
+              options={recipeTypes?.map(t => ({ value: t.recipe_type_id, label: t.recipe_type_name })) || []}
+              placeholder="All types"
+            />
           </div>
         </div>
 
