@@ -1,6 +1,6 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getAreaAnalytics, getDailyHistory, getAreaGraph } from '../api/live';
+import { getAreaAnalytics, getDailyHistory, getAreaGraph, getAreaTransitions } from '../api/live';
 import type { AreaAnalytics } from '../api/live';
 import { Loading } from '../components/shared/Loading';
 import { EmptyState } from '../components/shared/EmptyState';
@@ -178,8 +178,15 @@ export function AreaHeatmap() {
   const { data: graphData } = useQuery({
     queryKey: ['area-graph'],
     queryFn: getAreaGraph,
-    staleTime: 5 * 60_000, // graph structure changes rarely
-    enabled: view === 'map', // only fetch when map view is active
+    staleTime: 5 * 60_000,
+    enabled: view === 'map',
+  });
+
+  const { data: transitions } = useQuery({
+    queryKey: ['area-transitions'],
+    queryFn: getAreaTransitions,
+    staleTime: 60_000,
+    enabled: view === 'map',
   });
 
   const toggleSort = (field: SortField) => {
@@ -313,7 +320,7 @@ export function AreaHeatmap() {
         <div className="relative">
           {graphData ? (
             <Suspense fallback={<Loading message="Loading map..." />}>
-              <AreaMapView graphData={graphData} analytics={areas} timeRange={timeRange} />
+              <AreaMapView graphData={graphData} analytics={areas} transitions={transitions} timeRange={timeRange} />
             </Suspense>
           ) : (
             <Loading message="Loading area graph..." />

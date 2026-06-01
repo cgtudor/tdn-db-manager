@@ -317,6 +317,32 @@ export async function getAreaDailyHistory(days: number = 30): Promise<{ dayIndex
   return history;
 }
 
+// ─── Area Transitions ───────────────────────────────────────
+
+export interface AreaTransition {
+  from: string;
+  to: string;
+  count: number;
+}
+
+export async function getAreaTransitions(): Promise<AreaTransition[]> {
+  const redis = getRedisClient();
+  const raw = await redis.hgetall('tdn:area_transitions');
+
+  const transitions: AreaTransition[] = [];
+  for (const [key, countStr] of Object.entries(raw)) {
+    const parts = key.split('->');
+    if (parts.length === 2) {
+      transitions.push({
+        from: parts[0],
+        to: parts[1],
+        count: parseInt(countStr, 10) || 0,
+      });
+    }
+  }
+  return transitions;
+}
+
 // ─── Chat Stream ────────────────────────────────────────────
 
 function parseStreamEntry(entry: [string, string[]]): ChatMessage {

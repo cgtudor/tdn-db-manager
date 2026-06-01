@@ -97,6 +97,15 @@ router.get('/analytics/area-graph', requireDM, async (_req: Request, res: Respon
   }
 });
 
+router.get('/analytics/area-transitions', requireDM, async (_req: Request, res: Response) => {
+  try {
+    const transitions = await redisService.getAreaTransitions();
+    res.json(transitions);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/analytics/areas', requireDM, async (_req: Request, res: Response) => {
   try {
     const areas = await redisService.getAreaAnalytics();

@@ -97,6 +97,16 @@ export function getAreaGraph(): Promise<AreaGraphData> {
   return apiGet('/api/live/analytics/area-graph');
 }
 
+export interface AreaTransition {
+  from: string;
+  to: string;
+  count: number;
+}
+
+export function getAreaTransitions(): Promise<AreaTransition[]> {
+  return apiGet('/api/live/analytics/area-transitions');
+}
+
 export interface PlayerSessionSummary {
   totalPlaytime: number;
   sessions: { login: number; logout: number; duration: number; name: string }[];
