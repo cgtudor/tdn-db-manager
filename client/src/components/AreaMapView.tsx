@@ -123,8 +123,20 @@ const cytoscapeStyles: cytoscape.StylesheetStyle[] = [
   { selector: 'node.search-match', style: { 'border-color': '#FFD700', 'border-width': 3, 'label': 'data(label)', 'opacity': 1 } },
   { selector: 'node.hover-label', style: { 'label': 'data(label)' } },
   { selector: 'node.show-label', style: { 'label': 'data(label)' } },
-  // Nodes with collapsed interiors: show label and slightly larger
+  // Hub nodes with collapsed leaves: show label, indigo border
   { selector: 'node[leafCount > 0]', style: { 'label': 'data(label)', 'border-width': 3, 'border-color': '#6366f1' } },
+  // Compound parent nodes (expanded hubs): styled as containers
+  {
+    selector: ':parent',
+    style: {
+      'background-color': '#1e1b4b', 'background-opacity': 0.4,
+      'border-color': '#6366f1', 'border-width': 2, 'border-opacity': 0.6,
+      'shape': 'round-rectangle',
+      'padding': '20px',
+      'label': 'data(label)', 'text-valign': 'top', 'text-halign': 'center',
+      'font-size': '9px', 'color': '#a5b4fc', 'text-margin-y': -5,
+    },
+  },
   // Player indicator: green glow ring
   { selector: 'node.has-players', style: { 'border-color': '#22c55e', 'border-width': 4, 'label': 'data(label)' } },
   // Path styles
@@ -175,7 +187,7 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
   });
 
   // Collapsible interiors - which exterior nodes have interiors expanded
-  const [expandedHubs, setExpandedExteriors] = useState<Set<string>>(new Set());
+  const [, setExpandedHubs] = useState<Set<string>>(new Set());
   const [collapseLeaves, setCollapseInteriors] = useState(true);
 
   // Path finding state
@@ -270,20 +282,29 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
     return map;
   }, [liveAreas, tagToNodeId]);
 
-  // Filtered nodes (with interior collapse logic)
+  // Skeleton nodes (hubs + corridors) — never includes collapsed leaves
+  // expandedHubs is NOT a dependency here; expand/collapse is handled dynamically
   const filteredNodes = useMemo(() => {
     return graphData.nodes.filter(n => {
       if (!selectedRegions.has(n.region)) return false;
       if (!showOrphans && n.connections === 0) return false;
-
-      // Collapse interiors: hide interior nodes unless their parent is expanded
-      if (collapseLeaves && n.parentHub) {
-        if (!expandedHubs.has(n.parentHub)) return false;
-      }
-
+      // When collapsing, exclude leaf nodes from the initial build
+      if (collapseLeaves && n.parentHub) return false;
       return true;
     });
-  }, [graphData.nodes, selectedRegions, showOrphans, collapseLeaves, expandedHubs]);
+  }, [graphData.nodes, selectedRegions, showOrphans, collapseLeaves]);
+
+  // Leaf nodes grouped by parent hub (for dynamic expand/collapse)
+  const leafsByHub = useMemo(() => {
+    const map = new Map<string, AreaGraphNode[]>();
+    for (const n of graphData.nodes) {
+      if (n.parentHub && selectedRegions.has(n.region)) {
+        if (!map.has(n.parentHub)) map.set(n.parentHub, []);
+        map.get(n.parentHub)!.push(n);
+      }
+    }
+    return map;
+  }, [graphData.nodes, selectedRegions]);
 
   const filteredNodeIds = useMemo(() => new Set(filteredNodes.map(n => n.id)), [filteredNodes]);
 
@@ -316,13 +337,11 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Count collapsed interiors per exterior for badge display
+    // Count collapsed leaves per hub for badge display
     const collapsedCounts = new Map<string, number>();
     if (collapseLeaves) {
-      for (const n of graphData.nodes) {
-        if (n.parentHub && !expandedHubs.has(n.parentHub) && selectedRegions.has(n.region)) {
-          collapsedCounts.set(n.parentHub, (collapsedCounts.get(n.parentHub) || 0) + 1);
-        }
+      for (const [hubId, leaves] of leafsByHub) {
+        collapsedCounts.set(hubId, leaves.length);
       }
     }
 
@@ -417,17 +436,65 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
       neighbors.nodes().addClass('highlighted');
     });
 
-    // Double-click to expand/collapse interiors
+    // Double-click to expand/collapse leaf children as compound nodes
     cy.on('dbltap', 'node', (event: EventObject) => {
       const nodeId = event.target.id();
-      const interiors = event.target.data('leafCount') || 0;
-      if (interiors > 0 && collapseLeaves) {
-        setExpandedExteriors(prev => {
-          const next = new Set(prev);
-          if (next.has(nodeId)) next.delete(nodeId);
-          else next.add(nodeId);
-          return next;
-        });
+      const leafCount = event.target.data('leafCount') || 0;
+      if (leafCount === 0 || !collapseLeaves) return;
+
+      const currentlyExpanded = cy.nodes(`[parent = "${nodeId}"]`).length > 0;
+
+      if (currentlyExpanded) {
+        // Collapse: remove child nodes and their edges
+        const children = cy.nodes(`[parent = "${nodeId}"]`);
+        children.connectedEdges().remove();
+        children.remove();
+        setExpandedHubs(prev => { const n = new Set(prev); n.delete(nodeId); return n; });
+      } else {
+        // Expand: add leaf children as compound nodes inside this hub
+        const leaves = leafsByHub.get(nodeId) || [];
+        const elementsToAdd: cytoscape.ElementDefinition[] = [];
+        const leafIds = new Set(leaves.map(l => l.id));
+
+        for (const leaf of leaves) {
+          elementsToAdd.push({
+            group: 'nodes',
+            data: {
+              id: leaf.id, label: leaf.name, region: leaf.region,
+              areaType: leaf.areaType, connections: leaf.connections,
+              isDungeon: leaf.isDungeon || undefined, leafCount: 0,
+              color: getNodeColor(leaf), size: getNodeSize(leaf),
+              parent: nodeId,
+            },
+            position: { x: leaf.x, y: -leaf.y },
+          });
+        }
+
+        // Add edges connecting to these leaves
+        for (const link of graphData.links) {
+          if (leafIds.has(link.source) || leafIds.has(link.target)) {
+            const srcExists = leafIds.has(link.source) || cy.getElementById(link.source).length > 0;
+            const tgtExists = leafIds.has(link.target) || cy.getElementById(link.target).length > 0;
+            if (srcExists && tgtExists) {
+              const edgeId = `${link.source}-${link.target}`;
+              if (cy.getElementById(edgeId).length === 0) {
+                elementsToAdd.push({
+                  group: 'edges',
+                  data: { id: edgeId, source: link.source, target: link.target, weight: 1 },
+                });
+              }
+            }
+          }
+        }
+
+        cy.add(elementsToAdd);
+        setExpandedHubs(prev => { const n = new Set(prev); n.add(nodeId); return n; });
+
+        // Animate to show the expanded hub
+        const hubNode = cy.getElementById(nodeId);
+        if (hubNode.length > 0) {
+          cy.animate({ fit: { eles: hubNode.children().union(hubNode), padding: 50 }, duration: 300 });
+        }
       }
     });
 
