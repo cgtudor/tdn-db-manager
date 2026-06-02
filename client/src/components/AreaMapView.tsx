@@ -5,7 +5,7 @@ import { subscribePlayerStream } from '../api/live';
 import type { AreaPopulation } from '../types';
 import {
   Maximize2, ZoomIn, ZoomOut, RotateCcw, Search, X, Palette,
-  Filter, Waypoints, EyeOff, Eye, ChevronDown, Route, Users,
+  Filter, Layers, Waypoints, EyeOff, Eye, ChevronDown, Route, Users,
 } from 'lucide-react';
 
 // ─── Constants ──────────────────────────────────────────────
@@ -123,6 +123,8 @@ const cytoscapeStyles: cytoscape.StylesheetStyle[] = [
   { selector: 'node.search-match', style: { 'border-color': '#FFD700', 'border-width': 3, 'label': 'data(label)', 'opacity': 1 } },
   { selector: 'node.hover-label', style: { 'label': 'data(label)' } },
   { selector: 'node.show-label', style: { 'label': 'data(label)' } },
+  // Nodes with collapsed interiors: show label and slightly larger
+  { selector: 'node[interiorCount > 0]', style: { 'label': 'data(label)', 'border-width': 3, 'border-color': '#6366f1' } },
   // Player indicator: green glow ring
   { selector: 'node.has-players', style: { 'border-color': '#22c55e', 'border-width': 4, 'label': 'data(label)' } },
   // Path styles
@@ -171,6 +173,10 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
     for (const r of HIDDEN_BY_DEFAULT) all.delete(r);
     return all;
   });
+
+  // Collapsible interiors - which exterior nodes have interiors expanded
+  const [expandedExteriors, setExpandedExteriors] = useState<Set<string>>(new Set());
+  const [collapseInteriors, setCollapseInteriors] = useState(true);
 
   // Path finding state
   const [pathMode, setPathMode] = useState(false);
@@ -264,14 +270,20 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
     return map;
   }, [liveAreas, tagToNodeId]);
 
-  // Filtered nodes
+  // Filtered nodes (with interior collapse logic)
   const filteredNodes = useMemo(() => {
     return graphData.nodes.filter(n => {
       if (!selectedRegions.has(n.region)) return false;
       if (!showOrphans && n.connections === 0) return false;
+
+      // Collapse interiors: hide interior nodes unless their parent is expanded
+      if (collapseInteriors && n.parentExterior) {
+        if (!expandedExteriors.has(n.parentExterior)) return false;
+      }
+
       return true;
     });
-  }, [graphData.nodes, selectedRegions, showOrphans]);
+  }, [graphData.nodes, selectedRegions, showOrphans, collapseInteriors, expandedExteriors]);
 
   const filteredNodeIds = useMemo(() => new Set(filteredNodes.map(n => n.id)), [filteredNodes]);
 
@@ -304,15 +316,31 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const nodeElements = filteredNodes.map(node => ({
-      data: {
-        id: node.id, label: node.name, region: node.region,
-        areaType: node.areaType, connections: node.connections,
-        isDungeon: node.isDungeon || undefined,
-        color: getNodeColor(node), size: getNodeSize(node),
-      },
-      position: { x: node.x, y: -node.y },
-    }));
+    // Count collapsed interiors per exterior for badge display
+    const collapsedCounts = new Map<string, number>();
+    if (collapseInteriors) {
+      for (const n of graphData.nodes) {
+        if (n.parentExterior && !expandedExteriors.has(n.parentExterior) && selectedRegions.has(n.region)) {
+          collapsedCounts.set(n.parentExterior, (collapsedCounts.get(n.parentExterior) || 0) + 1);
+        }
+      }
+    }
+
+    const nodeElements = filteredNodes.map(node => {
+      const hiddenCount = collapsedCounts.get(node.id) || 0;
+      const label = hiddenCount > 0 ? `${node.name} [+${hiddenCount}]` : node.name;
+      return {
+        data: {
+          id: node.id, label, region: node.region,
+          areaType: node.areaType, connections: node.connections,
+          isDungeon: node.isDungeon || undefined,
+          interiorCount: hiddenCount,
+          color: getNodeColor(node),
+          size: hiddenCount > 0 ? Math.max(getNodeSize(node), 18 + hiddenCount * 0.5) : getNodeSize(node),
+        },
+        position: { x: node.x, y: -node.y },
+      };
+    });
 
     // Deduplicate edges and compute weights
     const edgePairs = new Map<string, { forward: boolean; backward: boolean }>();
@@ -387,6 +415,20 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
       neighbors.removeClass('dimmed');
       event.target.connectedEdges().addClass('highlighted');
       neighbors.nodes().addClass('highlighted');
+    });
+
+    // Double-click to expand/collapse interiors
+    cy.on('dbltap', 'node', (event: EventObject) => {
+      const nodeId = event.target.id();
+      const interiors = event.target.data('interiorCount') || 0;
+      if (interiors > 0 && collapseInteriors) {
+        setExpandedExteriors(prev => {
+          const next = new Set(prev);
+          if (next.has(nodeId)) next.delete(nodeId);
+          else next.add(nodeId);
+          return next;
+        });
+      }
     });
 
     cy.on('tap', (event: EventObject) => {
@@ -769,6 +811,12 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
           <button onClick={() => setColorMode(m => m === 'heat' ? 'region' : 'heat')}
             className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${colorMode === 'region' ? 'bg-indigo-500/20 text-indigo-300' : 'text-text-muted hover:text-text'}`}>
             <Palette className="h-3 w-3" />{colorMode === 'heat' ? 'Heat' : 'Region'}
+          </button>
+
+          <button onClick={() => setCollapseInteriors(v => !v)}
+            className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${collapseInteriors ? 'bg-indigo-500/20 text-indigo-300' : 'text-text-muted hover:text-text'}`}
+            title={collapseInteriors ? 'Interiors collapsed (double-click a node to expand). Click to show all.' : 'All interiors shown. Click to collapse.'}>
+            <Layers className="h-3 w-3" />{collapseInteriors ? 'Grouped' : 'All'}
           </button>
 
           <button onClick={() => setShowOrphans(v => !v)}

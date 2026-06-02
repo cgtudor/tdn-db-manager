@@ -63,6 +63,8 @@ export interface AreaGraphNode {
   isUnderground: boolean;
   isDungeon: boolean;
   dungeonLevel?: number;
+  parentExterior?: string;
+  interiorCount?: number;
   x: number;
   y: number;
   positioned: boolean;
