@@ -124,7 +124,7 @@ const cytoscapeStyles: cytoscape.StylesheetStyle[] = [
   { selector: 'node.hover-label', style: { 'label': 'data(label)' } },
   { selector: 'node.show-label', style: { 'label': 'data(label)' } },
   // Nodes with collapsed interiors: show label and slightly larger
-  { selector: 'node[interiorCount > 0]', style: { 'label': 'data(label)', 'border-width': 3, 'border-color': '#6366f1' } },
+  { selector: 'node[leafCount > 0]', style: { 'label': 'data(label)', 'border-width': 3, 'border-color': '#6366f1' } },
   // Player indicator: green glow ring
   { selector: 'node.has-players', style: { 'border-color': '#22c55e', 'border-width': 4, 'label': 'data(label)' } },
   // Path styles
@@ -175,8 +175,8 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
   });
 
   // Collapsible interiors - which exterior nodes have interiors expanded
-  const [expandedExteriors, setExpandedExteriors] = useState<Set<string>>(new Set());
-  const [collapseInteriors, setCollapseInteriors] = useState(true);
+  const [expandedHubs, setExpandedExteriors] = useState<Set<string>>(new Set());
+  const [collapseLeaves, setCollapseInteriors] = useState(true);
 
   // Path finding state
   const [pathMode, setPathMode] = useState(false);
@@ -277,13 +277,13 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
       if (!showOrphans && n.connections === 0) return false;
 
       // Collapse interiors: hide interior nodes unless their parent is expanded
-      if (collapseInteriors && n.parentExterior) {
-        if (!expandedExteriors.has(n.parentExterior)) return false;
+      if (collapseLeaves && n.parentHub) {
+        if (!expandedHubs.has(n.parentHub)) return false;
       }
 
       return true;
     });
-  }, [graphData.nodes, selectedRegions, showOrphans, collapseInteriors, expandedExteriors]);
+  }, [graphData.nodes, selectedRegions, showOrphans, collapseLeaves, expandedHubs]);
 
   const filteredNodeIds = useMemo(() => new Set(filteredNodes.map(n => n.id)), [filteredNodes]);
 
@@ -318,10 +318,10 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
 
     // Count collapsed interiors per exterior for badge display
     const collapsedCounts = new Map<string, number>();
-    if (collapseInteriors) {
+    if (collapseLeaves) {
       for (const n of graphData.nodes) {
-        if (n.parentExterior && !expandedExteriors.has(n.parentExterior) && selectedRegions.has(n.region)) {
-          collapsedCounts.set(n.parentExterior, (collapsedCounts.get(n.parentExterior) || 0) + 1);
+        if (n.parentHub && !expandedHubs.has(n.parentHub) && selectedRegions.has(n.region)) {
+          collapsedCounts.set(n.parentHub, (collapsedCounts.get(n.parentHub) || 0) + 1);
         }
       }
     }
@@ -334,7 +334,7 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
           id: node.id, label, region: node.region,
           areaType: node.areaType, connections: node.connections,
           isDungeon: node.isDungeon || undefined,
-          interiorCount: hiddenCount,
+          leafCount: hiddenCount,
           color: getNodeColor(node),
           size: hiddenCount > 0 ? Math.max(getNodeSize(node), 18 + hiddenCount * 0.5) : getNodeSize(node),
         },
@@ -420,8 +420,8 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
     // Double-click to expand/collapse interiors
     cy.on('dbltap', 'node', (event: EventObject) => {
       const nodeId = event.target.id();
-      const interiors = event.target.data('interiorCount') || 0;
-      if (interiors > 0 && collapseInteriors) {
+      const interiors = event.target.data('leafCount') || 0;
+      if (interiors > 0 && collapseLeaves) {
         setExpandedExteriors(prev => {
           const next = new Set(prev);
           if (next.has(nodeId)) next.delete(nodeId);
@@ -814,9 +814,9 @@ export function AreaMapView({ graphData, analytics, transitions, timeRange }: Ar
           </button>
 
           <button onClick={() => setCollapseInteriors(v => !v)}
-            className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${collapseInteriors ? 'bg-indigo-500/20 text-indigo-300' : 'text-text-muted hover:text-text'}`}
-            title={collapseInteriors ? 'Interiors collapsed (double-click a node to expand). Click to show all.' : 'All interiors shown. Click to collapse.'}>
-            <Layers className="h-3 w-3" />{collapseInteriors ? 'Grouped' : 'All'}
+            className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${collapseLeaves ? 'bg-indigo-500/20 text-indigo-300' : 'text-text-muted hover:text-text'}`}
+            title={collapseLeaves ? 'Dead-end areas collapsed into hubs (double-click to expand). Click to show all.' : 'All areas shown. Click to collapse dead-ends.'}>
+            <Layers className="h-3 w-3" />{collapseLeaves ? 'Grouped' : 'All'}
           </button>
 
           <button onClick={() => setShowOrphans(v => !v)}
