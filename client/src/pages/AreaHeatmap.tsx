@@ -76,14 +76,14 @@ function DailyChart({ data }: { data: { date: string; totalVisits: number }[] })
           No daily transition data yet. Data accumulates as players move between areas.
         </div>
       ) : (
-        <div className="flex items-end gap-px h-32 border-b border-border/50">
+        <div className="flex gap-px h-32 border-b border-border/50">
           {data.map((d, i) => {
             const height = (d.totalVisits / max) * 100;
             const isToday = i === data.length - 1;
             return (
               <div
                 key={d.date}
-                className="flex-1 flex flex-col items-center justify-end group relative min-w-[3px]"
+                className="flex-1 flex flex-col justify-end group relative min-w-[3px]"
               >
                 <div
                   className={`w-full rounded-t transition-colors ${isToday ? 'bg-indigo-400' : 'bg-indigo-500/70 group-hover:bg-indigo-400'}`}
