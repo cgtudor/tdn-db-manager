@@ -39,6 +39,7 @@ export function AreaWorldmapView() {
   const [hoveredArea, setHoveredArea] = useState<WorldmapArea | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showPlayers, setShowPlayers] = useState(true);
+  const [showUnderground, setShowUnderground] = useState(false);
   const [fitted, setFitted] = useState(false);
 
   const { data: meta } = useQuery({
@@ -130,6 +131,14 @@ export function AreaWorldmapView() {
     }
   }, [meta, fitted, fitToView]);
 
+  const isExterior = useCallback((area: WorldmapArea) => area.areaType === 'exterior', []);
+
+  // Visible areas based on underground toggle
+  const visibleAreas = useMemo(() => {
+    if (!meta) return [];
+    return showUnderground ? meta.areas : meta.areas.filter(isExterior);
+  }, [meta, showUnderground, isExterior]);
+
   // Areas with players
   const areasWithPlayers = useMemo(() => {
     if (!meta || !showPlayers) return [];
@@ -163,6 +172,15 @@ export function AreaWorldmapView() {
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-surface-dim">
         <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">Worldmap</span>
         <div className="flex-1" />
+        <button
+          onClick={() => setShowUnderground(!showUnderground)}
+          className={`flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors ${
+            showUnderground ? 'bg-purple-500/20 text-purple-400' : 'text-text-muted hover:text-text'
+          }`}
+          title="Toggle underground/interior areas"
+        >
+          {showUnderground ? 'Hide' : 'Show'} Underground
+        </button>
         <button
           onClick={() => setShowPlayers(!showPlayers)}
           className={`flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors ${
@@ -200,7 +218,9 @@ export function AreaWorldmapView() {
         ) : (
           <>
             {/* Area tiles - each is its own positioned image */}
-            {meta.areas.map(area => (
+            {visibleAreas.map(area => {
+              const underground = !isExterior(area);
+              return (
               <img
                 key={area.id}
                 src={`/api/live/analytics/worldmap-tiles/${area.id}`}
@@ -217,11 +237,13 @@ export function AreaWorldmapView() {
                   height: area.h * scale,
                   imageRendering: scale > 1.5 ? 'pixelated' : 'auto',
                   userSelect: 'none',
+                  opacity: underground ? 0.5 : 1,
                   outline: hoveredArea?.id === area.id ? '2px solid rgba(255,255,255,0.7)' : 'none',
-                  zIndex: hoveredArea?.id === area.id ? 10 : 1,
+                  zIndex: hoveredArea?.id === area.id ? 10 : underground ? 0 : 1,
                 }}
               />
-            ))}
+              );
+            })}
 
             {/* Player indicators */}
             {areasWithPlayers.map(({ area, pop }) => (

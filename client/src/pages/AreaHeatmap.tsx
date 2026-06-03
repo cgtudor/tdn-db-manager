@@ -318,8 +318,8 @@ export function AreaHeatmap() {
         </div>
       </div>
 
-      {/* Daily chart */}
-      {!historyLoading && dailyHistory && dailyHistory.length > 0 && (
+      {/* Daily chart (hide on map/worldmap views) */}
+      {view !== 'map' && view !== 'worldmap' && !historyLoading && dailyHistory && dailyHistory.length > 0 && (
         <DailyChart data={dailyHistory} />
       )}
 
