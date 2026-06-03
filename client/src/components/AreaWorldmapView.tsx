@@ -702,7 +702,7 @@ export function AreaWorldmapView() {
                   width: '100%',
                   height: '100%',
                   pointerEvents: 'none',
-                  zIndex: 0,
+                  zIndex: 2,
                 }}
               >
                 {meta.links.map((link, i) => (
@@ -712,7 +712,7 @@ export function AreaWorldmapView() {
                     y1={pan.y + link.sy * scale}
                     x2={pan.x + link.tx * scale}
                     y2={pan.y + link.ty * scale}
-                    stroke={link.type === 'door' ? 'rgba(180,140,80,0.4)' : 'rgba(100,160,255,0.3)'}
+                    stroke={link.type === 'door' ? 'rgba(180,140,80,0.5)' : 'rgba(100,160,255,0.4)'}
                     strokeWidth={Math.max(1, scale * 2)}
                   />
                 ))}
