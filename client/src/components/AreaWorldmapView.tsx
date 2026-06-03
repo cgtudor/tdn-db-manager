@@ -17,11 +17,22 @@ interface WorldmapArea {
   h: number;
 }
 
+interface WorldmapLink {
+  source: string;
+  target: string;
+  type: string;
+  sx: number;
+  sy: number;
+  tx: number;
+  ty: number;
+}
+
 interface WorldmapMeta {
   width: number;
   height: number;
   tileUrl: string;
   areas: WorldmapArea[];
+  links: WorldmapLink[];
 }
 
 function getWorldmapMeta(): Promise<WorldmapMeta> {
@@ -40,6 +51,7 @@ export function AreaWorldmapView() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showPlayers, setShowPlayers] = useState(true);
   const [showUnderground, setShowUnderground] = useState(false);
+  const [showLinks, setShowLinks] = useState(true);
   const [fitted, setFitted] = useState(false);
 
   const { data: meta } = useQuery({
@@ -173,6 +185,15 @@ export function AreaWorldmapView() {
         <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">Worldmap</span>
         <div className="flex-1" />
         <button
+          onClick={() => setShowLinks(!showLinks)}
+          className={`flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors ${
+            showLinks ? 'bg-blue-500/20 text-blue-400' : 'text-text-muted hover:text-text'
+          }`}
+          title="Toggle transition lines"
+        >
+          Links
+        </button>
+        <button
           onClick={() => setShowUnderground(!showUnderground)}
           className={`flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors ${
             showUnderground ? 'bg-purple-500/20 text-purple-400' : 'text-text-muted hover:text-text'
@@ -217,6 +238,33 @@ export function AreaWorldmapView() {
           </div>
         ) : (
           <>
+            {/* Transition links */}
+            {showLinks && meta.links && (
+              <svg
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  width: '100%',
+                  height: '100%',
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                }}
+              >
+                {meta.links.map((link, i) => (
+                  <line
+                    key={i}
+                    x1={pan.x + link.sx * scale}
+                    y1={pan.y + link.sy * scale}
+                    x2={pan.x + link.tx * scale}
+                    y2={pan.y + link.ty * scale}
+                    stroke={link.type === 'door' ? 'rgba(180,140,80,0.4)' : 'rgba(100,160,255,0.3)'}
+                    strokeWidth={Math.max(1, scale * 2)}
+                  />
+                ))}
+              </svg>
+            )}
+
             {/* Area tiles - each is its own positioned image */}
             {visibleAreas.map(area => {
               const underground = !isExterior(area);
