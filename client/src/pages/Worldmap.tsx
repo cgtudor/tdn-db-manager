@@ -5,8 +5,7 @@ const AreaWorldmapView = lazy(() => import('../components/AreaWorldmapView').the
 
 export function Worldmap() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-text">Worldmap</h1>
+    <div className="flex flex-col h-screen overflow-hidden">
       <Suspense fallback={<Loading message="Loading worldmap..." />}>
         <AreaWorldmapView />
       </Suspense>

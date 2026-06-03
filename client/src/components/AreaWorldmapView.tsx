@@ -106,25 +106,25 @@ function InteriorCard({
         </div>
         {pop && (
           <div className="absolute top-1 right-1">
-            <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-emerald-500 text-white text-[7px] font-bold shadow-sm shadow-emerald-500/50 animate-pulse">
+            <div className="flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white text-[8px] font-bold shadow-sm shadow-emerald-500/50 animate-pulse">
               {pop.playerCount}
             </div>
           </div>
         )}
-        <div className="px-1.5 py-1">
+        <div className="px-2 py-1.5">
           <div className="flex items-center gap-1">
-            {dungeon && <Skull className="h-2.5 w-2.5 text-red-400 shrink-0" />}
-            <div className={`text-[10px] truncate transition-colors ${
+            {dungeon && <Skull className="h-3 w-3 text-red-400 shrink-0" />}
+            <div className={`text-xs truncate transition-colors ${
               dungeon ? 'text-red-300/70 group-hover:text-red-200' : 'text-text-muted group-hover:text-text'
             }`}>
               {shortName}
             </div>
             {dungeon && (
-              <span className="text-[8px] font-bold text-red-400/70 shrink-0">L{dungeon}</span>
+              <span className="text-[9px] font-bold text-red-400/70 shrink-0">L{dungeon}</span>
             )}
           </div>
           {interior.encounters && interior.encounters.length > 0 && (
-            <div className="text-[8px] text-red-300/50 truncate mt-0.5">
+            <div className="text-[10px] text-red-300/50 truncate mt-0.5">
               {interior.encounters.slice(0, 3).join(', ')}
             </div>
           )}
@@ -137,30 +137,30 @@ function InteriorCard({
           className="fixed z-[60] pointer-events-none"
           style={{ left: tipPos.x + 12, top: tipPos.y + 12 }}
         >
-          <div className={`rounded-lg shadow-xl px-3 py-2 max-w-[220px] border ${
+          <div className={`rounded-lg shadow-xl px-3 py-2.5 max-w-[260px] border ${
             dungeon ? 'bg-[#1a0a0a] border-red-500/30' : 'bg-surface border-border'
           }`}>
-            <div className="text-[11px] font-semibold text-text flex items-center gap-1.5">
+            <div className="text-xs font-semibold text-text flex items-center gap-1.5">
               {interior.name.includes(' - ') ? interior.name.split(' - ').pop() : interior.name.split(': ').pop()}
               {dungeon && (
-                <span className="inline-flex items-center gap-0.5 px-1 py-px rounded text-[7px] font-bold uppercase bg-red-900/60 text-red-300 border border-red-500/30">
-                  <Skull className="h-1.5 w-1.5" />L{dungeon}
+                <span className="inline-flex items-center gap-0.5 px-1 py-px rounded text-[8px] font-bold uppercase bg-red-900/60 text-red-300 border border-red-500/30">
+                  <Skull className="h-2 w-2" />L{dungeon}
                 </span>
               )}
             </div>
-            <div className="text-[9px] text-text-muted">{interior.name}</div>
+            <div className="text-[10px] text-text-muted">{interior.name}</div>
             {interior.encounters && interior.encounters.length > 0 && (
               <div className="mt-1.5 pt-1.5 border-t border-red-500/15">
-                <div className="text-[8px] font-semibold uppercase tracking-wider text-red-400/60 mb-0.5">Encounters</div>
+                <div className="text-[9px] font-semibold uppercase tracking-wider text-red-400/60 mb-0.5">Encounters</div>
                 {interior.encounters.map((name, i) => (
-                  <div key={i} className="text-[9px] text-red-300/70 leading-relaxed">{name}</div>
+                  <div key={i} className="text-[10px] text-red-300/70 leading-relaxed">{name}</div>
                 ))}
               </div>
             )}
             {pop && (
               <div className="mt-1.5 pt-1.5 border-t border-border">
-                <div className="text-[9px] text-emerald-400 flex items-center gap-1">
-                  <Users className="h-2 w-2" />
+                <div className="text-[10px] text-emerald-400 flex items-center gap-1">
+                  <Users className="h-2.5 w-2.5" />
                   {pop.players.map(p => p.name).join(', ')}
                 </div>
               </div>
@@ -268,17 +268,17 @@ function InteriorPopup({
           left: pos.x,
           top: pos.y,
           zIndex: 40,
-          maxWidth: 400,
-          minWidth: 240,
+          maxWidth: 520,
+          minWidth: 300,
         }}
         className="bg-surface border border-border rounded-lg shadow-2xl overflow-hidden"
       >
         {/* Header */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-surface-dim">
-          <DoorOpen className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+          <DoorOpen className="h-4 w-4 text-amber-400 shrink-0" />
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-semibold text-text truncate">{area.name}</div>
-            <div className="text-[10px] text-text-muted">{interiors.length} interior{interiors.length !== 1 ? 's' : ''}</div>
+            <div className="text-sm font-semibold text-text truncate">{area.name}</div>
+            <div className="text-xs text-text-muted">{interiors.length} interior{interiors.length !== 1 ? 's' : ''}</div>
           </div>
           <button
             onClick={onClose}
@@ -289,7 +289,7 @@ function InteriorPopup({
         </div>
 
         {/* Interior grid */}
-        <div className="p-2 grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))' }}>
+        <div className="p-2.5 grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))' }}>
           {interiors.map(interior => {
             const pop = playersByTag.get(interior.tag);
             const dungeon = interior.dungeonLevel;
@@ -508,7 +508,7 @@ export function AreaWorldmapView() {
   }, [meta, scale]);
 
   return (
-    <div className="rounded-lg border border-border bg-surface overflow-hidden" style={{ height: 'calc(100vh - 160px)' }}>
+    <div className="rounded-lg border border-border bg-surface overflow-hidden flex-1 min-h-0">
       {/* Toolbar */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-surface-dim">
         <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">Worldmap</span>
