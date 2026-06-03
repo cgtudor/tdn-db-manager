@@ -121,7 +121,7 @@ router.get('/analytics/worldmap-tiles/:id', requireDM, async (req: Request, res:
       return;
     }
     res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Cache-Control', 'public, max-age=300');
     fs.createReadStream(tilePath).pipe(res);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
