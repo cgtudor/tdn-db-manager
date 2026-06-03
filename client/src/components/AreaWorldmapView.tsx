@@ -268,13 +268,16 @@ function InteriorPopup({
           left: pos.x,
           top: pos.y,
           zIndex: 40,
-          maxWidth: 520,
-          minWidth: 300,
+          maxWidth: interiors.length > 8 ? 700 : interiors.length > 4 ? 520 : 300,
+          minWidth: interiors.length > 4 ? 360 : 300,
+          maxHeight: 'calc(100vh - 80px)',
+          display: 'flex',
+          flexDirection: 'column',
         }}
         className="bg-surface border border-border rounded-lg shadow-2xl overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-surface-dim">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-surface-dim shrink-0">
           <DoorOpen className="h-4 w-4 text-amber-400 shrink-0" />
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-text truncate">{area.name}</div>
@@ -289,7 +292,7 @@ function InteriorPopup({
         </div>
 
         {/* Interior grid */}
-        <div className="p-2.5 grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))' }}>
+        <div className="p-2.5 grid gap-2.5 overflow-y-auto min-h-0" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${interiors.length > 8 ? '140' : '130'}px, 1fr))` }}>
           {interiors.map(interior => {
             const pop = playersByTag.get(interior.tag);
             const dungeon = interior.dungeonLevel;
