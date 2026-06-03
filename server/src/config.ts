@@ -43,4 +43,5 @@ export const config = {
   },
 
   areaGraphPath: process.env.AREA_GRAPH_PATH || path.resolve(__dirname, '../data/area_graph.json'),
+  worldmapPath: process.env.WORLDMAP_PATH || path.resolve(__dirname, '../data/worldmap.png'),
 };

@@ -74,6 +74,21 @@ router.get('/analytics/debug', requireDM, async (_req: Request, res: Response) =
   }
 });
 
+router.get('/analytics/worldmap-image', requireDM, async (_req: Request, res: Response) => {
+  try {
+    const imgPath = config.worldmapPath;
+    if (!fs.existsSync(imgPath)) {
+      res.status(404).json({ error: 'Worldmap image not found. Run stitch_worldmap.py to generate it.' });
+      return;
+    }
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    fs.createReadStream(imgPath).pipe(res);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/analytics/area-graph', requireDM, async (_req: Request, res: Response) => {
   try {
     const graphPath = config.areaGraphPath;

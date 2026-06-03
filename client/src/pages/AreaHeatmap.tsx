@@ -6,10 +6,11 @@ import { Loading } from '../components/shared/Loading';
 import { EmptyState } from '../components/shared/EmptyState';
 import {
   Map, TrendingUp, BarChart3, ArrowUpDown, Eye, EyeOff,
-  Flame, Snowflake, Calendar, Network,
+  Flame, Snowflake, Calendar, Network, Globe,
 } from 'lucide-react';
 
 const AreaMapView = lazy(() => import('../components/AreaMapView').then(m => ({ default: m.AreaMapView })));
+const AreaWorldmapView = lazy(() => import('../components/AreaWorldmapView').then(m => ({ default: m.AreaWorldmapView })));
 
 type SortField = 'today' | 'week' | 'month' | 'allTime' | 'areaName';
 type SortDir = 'asc' | 'desc';
@@ -162,7 +163,7 @@ export function AreaHeatmap() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [timeRange, setTimeRange] = useState<TimeRange>('week');
   const [showDead, setShowDead] = useState(false);
-  const [view, setView] = useState<'table' | 'heatmap' | 'map'>('heatmap');
+  const [view, setView] = useState<'table' | 'heatmap' | 'map' | 'worldmap'>('heatmap');
 
   const { data: areas, isLoading: areasLoading } = useQuery({
     queryKey: ['area-analytics'],
@@ -253,6 +254,12 @@ export function AreaHeatmap() {
             >
               <Network className="h-3 w-3 inline mr-1" />Map
             </button>
+            <button
+              onClick={() => setView('worldmap')}
+              className={`px-3 py-1 text-xs ${view === 'worldmap' ? 'bg-primary text-white' : 'bg-surface text-text-muted hover:text-text'}`}
+            >
+              <Globe className="h-3 w-3 inline mr-1" />Worldmap
+            </button>
           </div>
 
           {/* Time range */}
@@ -316,8 +323,12 @@ export function AreaHeatmap() {
         <DailyChart data={dailyHistory} />
       )}
 
-      {/* Map / Heatmap / Table view */}
-      {view === 'map' ? (
+      {/* Map / Heatmap / Table / Worldmap view */}
+      {view === 'worldmap' ? (
+        <Suspense fallback={<Loading message="Loading worldmap..." />}>
+          <AreaWorldmapView />
+        </Suspense>
+      ) : view === 'map' ? (
         <div className="relative">
           {graphData ? (
             <Suspense fallback={<Loading message="Loading map..." />}>
