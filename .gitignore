@@ -2,6 +2,7 @@ node_modules/
 dist/
 server/data/*
 !server/data/area_graph.json
+!server/data/worldmap.png
 .env
 *.sqlite3
 !server/src/db/schema.sql
