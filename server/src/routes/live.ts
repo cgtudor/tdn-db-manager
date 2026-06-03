@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import fs from 'fs';
+import path from 'path';
 import { requireDM } from '../auth/middleware';
 import { config } from '../config';
 import * as redisService from '../services/redis';
@@ -105,6 +106,23 @@ router.get('/analytics/worldmap-meta', requireDM, async (_req: Request, res: Res
       cachedWorldmapMetaMtime = stat.mtimeMs;
     }
     res.json(cachedWorldmapMeta);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/analytics/worldmap-tiles/:id', requireDM, async (req: Request, res: Response) => {
+  try {
+    const tileId = (req.params.id as string).replace(/[^a-zA-Z0-9_-]/g, '');
+    const tilesDir = path.join(path.dirname(config.worldmapPath), 'worldmap_tiles');
+    const tilePath = path.join(tilesDir, `${tileId}.png`);
+    if (!fs.existsSync(tilePath)) {
+      res.status(404).json({ error: 'Tile not found' });
+      return;
+    }
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    fs.createReadStream(tilePath).pipe(res);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

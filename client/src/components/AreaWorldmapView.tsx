@@ -5,13 +5,12 @@ import { subscribePlayerStream } from '../api/live';
 import type { AreaPopulation } from '../types';
 import { apiGet } from '../api/client';
 
-const WORLDMAP_URL = '/api/live/analytics/worldmap-image';
-
 interface WorldmapArea {
   id: string;
   name: string;
   region: string;
   tag: string;
+  areaType: string;
   x: number;
   y: number;
   w: number;
@@ -21,6 +20,7 @@ interface WorldmapArea {
 interface WorldmapMeta {
   width: number;
   height: number;
+  tileUrl: string;
   areas: WorldmapArea[];
 }
 
@@ -30,20 +30,17 @@ function getWorldmapMeta(): Promise<WorldmapMeta> {
 
 export function AreaWorldmapView() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
 
-  const [scale, setScale] = useState(0.5);
+  const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const [imgError, setImgError] = useState(false);
   const [hoveredArea, setHoveredArea] = useState<WorldmapArea | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showPlayers, setShowPlayers] = useState(true);
+  const [fitted, setFitted] = useState(false);
 
-  // Load metadata
   const { data: meta } = useQuery({
     queryKey: ['worldmap-meta'],
     queryFn: getWorldmapMeta,
@@ -56,7 +53,6 @@ export function AreaWorldmapView() {
     return subscribePlayerStream((data) => setLiveAreas(data.areas));
   }, []);
 
-  // Map area tags to player counts
   const playersByTag = useMemo(() => {
     const map = new Map<string, AreaPopulation>();
     for (const a of liveAreas) {
@@ -88,7 +84,6 @@ export function AreaWorldmapView() {
     });
   }, []);
 
-  // Attach wheel listener with { passive: false } to prevent page scroll
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -105,65 +100,62 @@ export function AreaWorldmapView() {
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     setMousePos({ x: e.clientX, y: e.clientY });
-
     if (dragging) {
       setPan({
         x: panStart.x + (e.clientX - dragStart.x),
         y: panStart.y + (e.clientY - dragStart.y),
       });
-      return;
     }
-
-    // Hit test areas for hover
-    if (!meta || !containerRef.current) {
-      setHoveredArea(null);
-      return;
-    }
-    const rect = containerRef.current.getBoundingClientRect();
-    const imgX = (e.clientX - rect.left - pan.x) / scale;
-    const imgY = (e.clientY - rect.top - pan.y) / scale;
-
-    let found: WorldmapArea | null = null;
-    for (const area of meta.areas) {
-      if (imgX >= area.x && imgX < area.x + area.w &&
-          imgY >= area.y && imgY < area.y + area.h) {
-        found = area;
-        break;
-      }
-    }
-    setHoveredArea(found);
-  }, [dragging, dragStart, panStart, pan, scale, meta]);
+  }, [dragging, dragStart, panStart]);
 
   const handleMouseUp = useCallback(() => setDragging(false), []);
 
   const fitToView = useCallback(() => {
-    if (!containerRef.current || !imgRef.current) return;
-    const container = containerRef.current.getBoundingClientRect();
-    const imgW = imgRef.current.naturalWidth;
-    const imgH = imgRef.current.naturalHeight;
-    if (!imgW || !imgH) return;
-    const fitScale = Math.min(container.width / imgW, container.height / imgH) * 0.95;
+    if (!containerRef.current || !meta) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const fitScale = Math.min(rect.width / meta.width, rect.height / meta.height) * 0.95;
     const s = clampScale(fitScale);
     setScale(s);
     setPan({
-      x: (container.width - imgW * s) / 2,
-      y: (container.height - imgH * s) / 2,
+      x: (rect.width - meta.width * s) / 2,
+      y: (rect.height - meta.height * s) / 2,
     });
-  }, []);
+  }, [meta]);
 
+  // Fit on first load
   useEffect(() => {
-    if (imgLoaded) fitToView();
-  }, [imgLoaded, fitToView]);
+    if (meta && !fitted) {
+      fitToView();
+      setFitted(true);
+    }
+  }, [meta, fitted, fitToView]);
 
-  // Areas with players for the overlay
+  // Areas with players
   const areasWithPlayers = useMemo(() => {
     if (!meta || !showPlayers) return [];
     return meta.areas
       .map(area => ({ area, pop: playersByTag.get(area.tag) }))
-      .filter((entry): entry is { area: WorldmapArea; pop: AreaPopulation } => !!entry.pop);
+      .filter((e): e is { area: WorldmapArea; pop: AreaPopulation } => !!e.pop);
   }, [meta, playersByTag, showPlayers]);
 
   const totalPlayers = liveAreas.reduce((s, a) => s + a.playerCount, 0);
+
+  // Region centroids for labels
+  const regionLabels = useMemo(() => {
+    if (!meta || scale > 0.3) return [];
+    const centroids = new Map<string, { sx: number; sy: number; c: number }>();
+    for (const area of meta.areas) {
+      if (!area.region) continue;
+      const r = centroids.get(area.region) || { sx: 0, sy: 0, c: 0 };
+      r.sx += area.x + area.w / 2;
+      r.sy += area.y + area.h / 2;
+      r.c += 1;
+      centroids.set(area.region, r);
+    }
+    return Array.from(centroids.entries())
+      .filter(([, r]) => r.c >= 3)
+      .map(([name, r]) => ({ name, x: r.sx / r.c, y: r.sy / r.c }));
+  }, [meta, scale]);
 
   return (
     <div className="rounded-lg border border-border bg-surface overflow-hidden" style={{ height: 'calc(100vh - 280px)' }}>
@@ -195,59 +187,46 @@ export function AreaWorldmapView() {
       <div
         ref={containerRef}
         className="relative w-full h-full overflow-hidden"
-        style={{ cursor: dragging ? 'grabbing' : hoveredArea ? 'pointer' : 'grab', background: '#141424' }}
+        style={{ cursor: dragging ? 'grabbing' : 'grab', background: '#141424' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        {imgError ? (
+        {!meta ? (
           <div className="flex items-center justify-center h-full text-text-muted text-sm">
-            Worldmap image not available. Run <code className="mx-1 px-1 py-0.5 bg-surface-dim rounded text-xs">stitch_worldmap.py</code> to generate it.
+            Loading worldmap...
           </div>
         ) : (
           <>
-            {/* Worldmap image */}
-            <img
-              ref={imgRef}
-              src={WORLDMAP_URL}
-              alt="TDN Worldmap"
-              draggable={false}
-              onLoad={() => setImgLoaded(true)}
-              onError={() => setImgError(true)}
-              style={{
-                position: 'absolute',
-                left: pan.x,
-                top: pan.y,
-                transform: `scale(${scale})`,
-                transformOrigin: '0 0',
-                imageRendering: scale > 1.5 ? 'pixelated' : 'auto',
-                userSelect: 'none',
-                opacity: imgLoaded ? 1 : 0,
-              }}
-            />
-
-            {/* Hovered area highlight */}
-            {imgLoaded && hoveredArea && (
-              <div
+            {/* Area tiles - each is its own positioned image */}
+            {meta.areas.map(area => (
+              <img
+                key={area.id}
+                src={`/api/live/analytics/worldmap-tiles/${area.id}`}
+                alt=""
+                draggable={false}
+                loading="lazy"
+                onMouseEnter={() => setHoveredArea(area)}
+                onMouseLeave={() => setHoveredArea(null)}
                 style={{
                   position: 'absolute',
-                  left: pan.x + hoveredArea.x * scale,
-                  top: pan.y + hoveredArea.y * scale,
-                  width: hoveredArea.w * scale,
-                  height: hoveredArea.h * scale,
-                  border: '2px solid rgba(255,255,255,0.6)',
-                  background: 'rgba(255,255,255,0.08)',
-                  pointerEvents: 'none',
-                  zIndex: 10,
+                  left: pan.x + area.x * scale,
+                  top: pan.y + area.y * scale,
+                  width: area.w * scale,
+                  height: area.h * scale,
+                  imageRendering: scale > 1.5 ? 'pixelated' : 'auto',
+                  userSelect: 'none',
+                  outline: hoveredArea?.id === area.id ? '2px solid rgba(255,255,255,0.7)' : 'none',
+                  zIndex: hoveredArea?.id === area.id ? 10 : 1,
                 }}
               />
-            )}
+            ))}
 
             {/* Player indicators */}
-            {imgLoaded && areasWithPlayers.map(({ area, pop }) => (
+            {areasWithPlayers.map(({ area, pop }) => (
               <div
-                key={area.id}
+                key={`player-${area.id}`}
                 style={{
                   position: 'absolute',
                   left: pan.x + (area.x + area.w / 2) * scale - 8,
@@ -263,43 +242,23 @@ export function AreaWorldmapView() {
             ))}
 
             {/* Region labels at low zoom */}
-            {imgLoaded && meta && scale < 0.3 && (() => {
-              // Group areas by region, compute centroids
-              const regionCentroids = new Map<string, { sx: number; sy: number; c: number }>();
-              for (const area of meta.areas) {
-                if (!area.region) continue;
-                const r = regionCentroids.get(area.region) || { sx: 0, sy: 0, c: 0 };
-                r.sx += area.x + area.w / 2;
-                r.sy += area.y + area.h / 2;
-                r.c += 1;
-                regionCentroids.set(area.region, r);
-              }
-              return Array.from(regionCentroids.entries())
-                .filter(([, r]) => r.c >= 3)
-                .map(([name, r]) => (
-                  <div
-                    key={name}
-                    style={{
-                      position: 'absolute',
-                      left: pan.x + (r.sx / r.c) * scale,
-                      top: pan.y + (r.sy / r.c) * scale,
-                      transform: 'translate(-50%, -50%)',
-                      pointerEvents: 'none',
-                      zIndex: 5,
-                    }}
-                    className="text-white/30 font-bold text-xs whitespace-nowrap"
-                  >
-                    {name}
-                  </div>
-                ));
-            })()}
+            {regionLabels.map(({ name, x, y }) => (
+              <div
+                key={`region-${name}`}
+                style={{
+                  position: 'absolute',
+                  left: pan.x + x * scale,
+                  top: pan.y + y * scale,
+                  transform: 'translate(-50%, -50%)',
+                  pointerEvents: 'none',
+                  zIndex: 5,
+                }}
+                className="text-white/30 font-bold text-xs whitespace-nowrap"
+              >
+                {name}
+              </div>
+            ))}
           </>
-        )}
-
-        {!imgLoaded && !imgError && (
-          <div className="flex items-center justify-center h-full text-text-muted text-sm">
-            Loading worldmap...
-          </div>
         )}
 
         {/* Tooltip */}
