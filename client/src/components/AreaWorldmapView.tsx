@@ -11,7 +11,8 @@ interface WorldmapArea {
   region: string;
   tag: string;
   isInterior: boolean;
-  isDungeon: boolean;
+  dungeonLevel?: number;
+  encounters?: string[];
   x: number;
   y: number;
   w: number;
@@ -32,7 +33,8 @@ interface WorldmapInterior {
   id: string;
   name: string;
   tag: string;
-  isDungeon: boolean;
+  dungeonLevel?: number;
+  encounters?: string[];
   w: number;
   h: number;
 }
@@ -170,7 +172,7 @@ function InteriorPopup({
         <div className="p-2 grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))' }}>
           {interiors.map(interior => {
             const pop = playersByTag.get(interior.tag);
-            const dungeon = interior.isDungeon;
+            const dungeon = interior.dungeonLevel;
             return (
               <div
                 key={interior.id}
@@ -204,13 +206,23 @@ function InteriorPopup({
                     </div>
                   </div>
                 )}
-                <div className="px-1.5 py-1 flex items-center gap-1">
-                  {dungeon && <Skull className="h-2.5 w-2.5 text-red-400 shrink-0" />}
-                  <div className={`text-[10px] truncate transition-colors ${
-                    dungeon ? 'text-red-300/70 group-hover:text-red-200' : 'text-text-muted group-hover:text-text'
-                  }`} title={interior.name}>
-                    {interior.name.includes(' - ') ? interior.name.split(' - ').pop() : interior.name.split(': ').pop()}
+                <div className="px-1.5 py-1">
+                  <div className="flex items-center gap-1">
+                    {dungeon && <Skull className="h-2.5 w-2.5 text-red-400 shrink-0" />}
+                    <div className={`text-[10px] truncate transition-colors ${
+                      dungeon ? 'text-red-300/70 group-hover:text-red-200' : 'text-text-muted group-hover:text-text'
+                    }`} title={interior.name}>
+                      {interior.name.includes(' - ') ? interior.name.split(' - ').pop() : interior.name.split(': ').pop()}
+                    </div>
+                    {interior.dungeonLevel && (
+                      <span className="text-[8px] font-bold text-red-400/70 shrink-0">L{interior.dungeonLevel}</span>
+                    )}
                   </div>
+                  {interior.encounters && interior.encounters.length > 0 && (
+                    <div className="text-[8px] text-red-300/50 truncate mt-0.5" title={interior.encounters.join(', ')}>
+                      {interior.encounters.slice(0, 3).join(', ')}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -421,7 +433,7 @@ export function AreaWorldmapView() {
   }, [meta, scale]);
 
   return (
-    <div className="rounded-lg border border-border bg-surface overflow-hidden" style={{ height: 'calc(100vh - 280px)' }}>
+    <div className="rounded-lg border border-border bg-surface overflow-hidden" style={{ height: 'calc(100vh - 160px)' }}>
       {/* Toolbar */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-surface-dim">
         <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">Worldmap</span>
@@ -530,7 +542,7 @@ export function AreaWorldmapView() {
                   cursor: hasInteriors ? 'pointer' : undefined,
                   outline: isHovered ? '2px solid rgba(255,255,255,0.7)'
                     : isPopupTarget ? '2px solid rgba(245,180,60,0.8)' : 'none',
-                  boxShadow: area.isDungeon && scale > 0.15
+                  boxShadow: area.dungeonLevel && scale > 0.15
                     ? `inset 0 0 ${Math.max(4, 12 * scale)}px rgba(220,40,40,0.35), 0 0 ${Math.max(3, 8 * scale)}px rgba(180,20,20,0.25)`
                     : undefined,
                   zIndex: isHovered ? 10 : 1,
@@ -558,7 +570,7 @@ export function AreaWorldmapView() {
             ))}
 
             {/* Skull badges on dungeon areas */}
-            {scale > 0.15 && visibleAreas.filter(a => a.isDungeon).map(area => (
+            {scale > 0.15 && visibleAreas.filter(a => a.dungeonLevel).map(area => (
               <div
                 key={`skull-${area.id}`}
                 style={{
@@ -640,13 +652,18 @@ export function AreaWorldmapView() {
             <div className="bg-surface border border-border rounded-lg shadow-xl px-3 py-2 max-w-xs">
               <div className="text-xs font-semibold text-text flex items-center gap-1.5">
                 {hoveredArea.name}
-                {hoveredArea.isDungeon && (
+                {hoveredArea.dungeonLevel && (
                   <span className="inline-flex items-center gap-0.5 px-1 py-px rounded text-[8px] font-bold uppercase tracking-wider bg-red-900/60 text-red-300 border border-red-500/30">
-                    <Skull className="h-2 w-2" />Dungeon
+                    <Skull className="h-2 w-2" />Lvl {hoveredArea.dungeonLevel}
                   </span>
                 )}
               </div>
               <div className="text-[10px] text-text-muted">{hoveredArea.region}</div>
+              {hoveredArea.encounters && hoveredArea.encounters.length > 0 && (
+                <div className="text-[10px] text-red-300/80 mt-0.5">
+                  {hoveredArea.encounters.slice(0, 5).join(', ')}{hoveredArea.encounters.length > 5 ? ` +${hoveredArea.encounters.length - 5} more` : ''}
+                </div>
+              )}
               {meta?.interiors?.[hoveredArea.id] && (
                 <div className="text-[10px] text-amber-400 mt-0.5 flex items-center gap-1">
                   <DoorOpen className="h-2.5 w-2.5" />
