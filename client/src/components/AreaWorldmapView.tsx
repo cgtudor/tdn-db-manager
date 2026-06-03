@@ -10,7 +10,7 @@ interface WorldmapArea {
   name: string;
   region: string;
   tag: string;
-  areaType: string;
+  isInterior: boolean;
   x: number;
   y: number;
   w: number;
@@ -131,7 +131,7 @@ export function AreaWorldmapView() {
     }
   }, [meta, fitted, fitToView]);
 
-  const isExterior = useCallback((area: WorldmapArea) => area.areaType === 'exterior', []);
+  const isExterior = useCallback((area: WorldmapArea) => !area.isInterior, []);
 
   // Visible areas based on underground toggle
   const visibleAreas = useMemo(() => {
