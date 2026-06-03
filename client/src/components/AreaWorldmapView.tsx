@@ -215,7 +215,6 @@ export function AreaWorldmapView() {
   const [hoveredArea, setHoveredArea] = useState<WorldmapArea | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showPlayers, setShowPlayers] = useState(true);
-  const [showUnderground, setShowUnderground] = useState(false);
   const [showLinks, setShowLinks] = useState(true);
   const [fitted, setFitted] = useState(false);
   const [interiorPopup, setInteriorPopup] = useState<{ area: WorldmapArea; screenX: number; screenY: number } | null>(null);
@@ -334,20 +333,55 @@ export function AreaWorldmapView() {
     setInteriorPopup({ area, screenX: e.clientX, screenY: e.clientY });
   }, [meta]);
 
-  const isExterior = useCallback((area: WorldmapArea) => !area.isInterior, []);
-
-  // Visible areas based on underground toggle
+  // Only show exterior areas on the map (interiors are in popups)
   const visibleAreas = useMemo(() => {
     if (!meta) return [];
-    return showUnderground ? meta.areas : meta.areas.filter(isExterior);
-  }, [meta, showUnderground, isExterior]);
+    return meta.areas.filter(a => !a.isInterior);
+  }, [meta]);
 
-  // Areas with players
+  // Areas with players (including interior player counts aggregated onto parent)
   const areasWithPlayers = useMemo(() => {
     if (!meta || !showPlayers) return [];
-    return meta.areas
-      .map(area => ({ area, pop: playersByTag.get(area.tag) }))
-      .filter((e): e is { area: WorldmapArea; pop: AreaPopulation } => !!e.pop);
+
+    // Build interior tag -> parent area id map
+    const interiorTagToParent = new Map<string, string>();
+    if (meta.interiors) {
+      for (const [parentId, children] of Object.entries(meta.interiors)) {
+        for (const child of children) {
+          interiorTagToParent.set(child.tag, parentId);
+        }
+      }
+    }
+
+    // Aggregate: for each area, count direct players + interior players
+    const areaById = new Map(meta.areas.map(a => [a.id, a]));
+    const aggregated = new Map<string, { area: WorldmapArea; count: number; names: string[] }>();
+
+    for (const [tag, pop] of playersByTag) {
+      // Direct match: player is in this area
+      const directArea = meta.areas.find(a => a.tag === tag);
+      if (directArea && !directArea.isInterior) {
+        const entry = aggregated.get(directArea.id) ?? { area: directArea, count: 0, names: [] };
+        entry.count += pop.playerCount;
+        entry.names.push(...pop.players.map(p => p.name));
+        aggregated.set(directArea.id, entry);
+        continue;
+      }
+
+      // Interior match: roll up to parent
+      const parentId = interiorTagToParent.get(tag);
+      if (parentId) {
+        const parentArea = areaById.get(parentId);
+        if (parentArea) {
+          const entry = aggregated.get(parentId) ?? { area: parentArea, count: 0, names: [] };
+          entry.count += pop.playerCount;
+          entry.names.push(...pop.players.map(p => `${p.name} (inside)`));
+          aggregated.set(parentId, entry);
+        }
+      }
+    }
+
+    return Array.from(aggregated.values());
   }, [meta, playersByTag, showPlayers]);
 
   const totalPlayers = liveAreas.reduce((s, a) => s + a.playerCount, 0);
@@ -383,15 +417,6 @@ export function AreaWorldmapView() {
           title="Toggle transition lines"
         >
           Links
-        </button>
-        <button
-          onClick={() => setShowUnderground(!showUnderground)}
-          className={`flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors ${
-            showUnderground ? 'bg-purple-500/20 text-purple-400' : 'text-text-muted hover:text-text'
-          }`}
-          title="Toggle underground/interior areas"
-        >
-          {showUnderground ? 'Hide' : 'Show'} Underground
         </button>
         <button
           onClick={() => setShowPlayers(!showPlayers)}
@@ -464,7 +489,6 @@ export function AreaWorldmapView() {
 
             {/* Area tiles - each is its own positioned image */}
             {visibleAreas.map(area => {
-              const underground = !isExterior(area);
               const hasInteriors = !!meta.interiors?.[area.id];
               return (
               <img
@@ -485,10 +509,9 @@ export function AreaWorldmapView() {
                   imageRendering: scale > 1.5 ? 'pixelated' : 'auto',
                   userSelect: 'none',
                   cursor: hasInteriors ? 'pointer' : undefined,
-                  opacity: underground ? 0.5 : 1,
                   outline: hoveredArea?.id === area.id ? '2px solid rgba(255,255,255,0.7)'
                     : interiorPopup?.area.id === area.id ? '2px solid rgba(245,180,60,0.8)' : 'none',
-                  zIndex: hoveredArea?.id === area.id ? 10 : underground ? 0 : 1,
+                  zIndex: hoveredArea?.id === area.id ? 10 : 1,
                 }}
               />
               );
@@ -500,32 +523,33 @@ export function AreaWorldmapView() {
                 key={`door-${area.id}`}
                 style={{
                   position: 'absolute',
-                  left: pan.x + (area.x + area.w) * scale - 6,
-                  top: pan.y + area.y * scale - 6,
+                  left: pan.x + (area.x + area.w) * scale - 8,
+                  top: pan.y + area.y * scale - 8,
                   pointerEvents: 'none',
                   zIndex: 15,
                 }}
               >
-                <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-500/90 shadow-sm shadow-amber-500/40">
-                  <DoorOpen className="h-2 w-2 text-white" />
+                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-500/90 shadow-sm shadow-amber-500/40">
+                  <DoorOpen className="h-2.5 w-2.5 text-white" />
                 </div>
               </div>
             ))}
 
             {/* Player indicators */}
-            {areasWithPlayers.map(({ area, pop }) => (
+            {areasWithPlayers.map(({ area, count, names }) => (
               <div
                 key={`player-${area.id}`}
+                title={names.join(', ')}
                 style={{
                   position: 'absolute',
-                  left: pan.x + (area.x + area.w / 2) * scale - 8,
-                  top: pan.y + (area.y + area.h / 2) * scale - 8,
-                  pointerEvents: 'none',
+                  left: pan.x + (area.x + area.w / 2) * scale - 10,
+                  top: pan.y + (area.y + area.h / 2) * scale - 10,
+                  pointerEvents: 'auto',
                   zIndex: 20,
                 }}
               >
-                <div className="flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white text-[8px] font-bold shadow-lg shadow-emerald-500/50 animate-pulse">
-                  {pop.playerCount}
+                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-white text-[9px] font-bold shadow-lg shadow-emerald-500/50 animate-pulse">
+                  {count}
                 </div>
               </div>
             ))}
@@ -582,12 +606,15 @@ export function AreaWorldmapView() {
                   {meta.interiors[hoveredArea.id].length} interior{meta.interiors[hoveredArea.id].length !== 1 ? 's' : ''} (click to view)
                 </div>
               )}
-              {playersByTag.has(hoveredArea.tag) && (
-                <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
-                  <Users className="h-2.5 w-2.5" />
-                  {playersByTag.get(hoveredArea.tag)!.players.map(p => p.name).join(', ')}
-                </div>
-              )}
+              {(() => {
+                const agg = areasWithPlayers.find(e => e.area.id === hoveredArea.id);
+                return agg ? (
+                  <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
+                    <Users className="h-2.5 w-2.5" />
+                    {agg.names.join(', ')}
+                  </div>
+                ) : null;
+              })()}
             </div>
           </div>
         )}
