@@ -52,6 +52,126 @@ function getWorldmapMeta(): Promise<WorldmapMeta> {
   return apiGet('/api/live/analytics/worldmap-meta');
 }
 
+function InteriorCard({
+  interior,
+  pop,
+  dungeon,
+}: {
+  interior: WorldmapInterior;
+  pop: AreaPopulation | undefined;
+  dungeon: number | undefined;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [tipPos, setTipPos] = useState<{ x: number; y: number } | null>(null);
+
+  const handleEnter = (e: React.MouseEvent) => {
+    setHovered(true);
+    setTipPos({ x: e.clientX, y: e.clientY });
+  };
+  const handleMove = (e: React.MouseEvent) => {
+    if (hovered) setTipPos({ x: e.clientX, y: e.clientY });
+  };
+
+  const shortName = interior.name.includes(' - ')
+    ? interior.name.split(' - ').pop()!
+    : interior.name.split(': ').pop()!;
+
+  return (
+    <>
+      <div
+        ref={cardRef}
+        onMouseEnter={handleEnter}
+        onMouseMove={handleMove}
+        onMouseLeave={() => setHovered(false)}
+        className={`group relative rounded overflow-hidden border transition-colors ${
+          dungeon
+            ? 'border-red-500/20 bg-red-950/20 hover:border-red-400/50'
+            : 'border-white/5 bg-black/30 hover:border-amber-400/40'
+        }`}
+      >
+        <div className="relative">
+          <img
+            src={`/api/live/analytics/worldmap-tiles/${interior.id}?v=3`}
+            alt=""
+            draggable={false}
+            className="w-full aspect-square object-contain bg-black/50"
+            style={{ imageRendering: 'pixelated' }}
+          />
+          {dungeon && (
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ boxShadow: 'inset 0 0 12px rgba(180,20,20,0.3)' }}
+            />
+          )}
+        </div>
+        {pop && (
+          <div className="absolute top-1 right-1">
+            <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-emerald-500 text-white text-[7px] font-bold shadow-sm shadow-emerald-500/50 animate-pulse">
+              {pop.playerCount}
+            </div>
+          </div>
+        )}
+        <div className="px-1.5 py-1">
+          <div className="flex items-center gap-1">
+            {dungeon && <Skull className="h-2.5 w-2.5 text-red-400 shrink-0" />}
+            <div className={`text-[10px] truncate transition-colors ${
+              dungeon ? 'text-red-300/70 group-hover:text-red-200' : 'text-text-muted group-hover:text-text'
+            }`}>
+              {shortName}
+            </div>
+            {dungeon && (
+              <span className="text-[8px] font-bold text-red-400/70 shrink-0">L{dungeon}</span>
+            )}
+          </div>
+          {interior.encounters && interior.encounters.length > 0 && (
+            <div className="text-[8px] text-red-300/50 truncate mt-0.5">
+              {interior.encounters.slice(0, 3).join(', ')}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Hover tooltip */}
+      {hovered && tipPos && (
+        <div
+          className="fixed z-[60] pointer-events-none"
+          style={{ left: tipPos.x + 12, top: tipPos.y + 12 }}
+        >
+          <div className={`rounded-lg shadow-xl px-3 py-2 max-w-[220px] border ${
+            dungeon ? 'bg-[#1a0a0a] border-red-500/30' : 'bg-surface border-border'
+          }`}>
+            <div className="text-[11px] font-semibold text-text flex items-center gap-1.5">
+              {interior.name.includes(' - ') ? interior.name.split(' - ').pop() : interior.name.split(': ').pop()}
+              {dungeon && (
+                <span className="inline-flex items-center gap-0.5 px-1 py-px rounded text-[7px] font-bold uppercase bg-red-900/60 text-red-300 border border-red-500/30">
+                  <Skull className="h-1.5 w-1.5" />L{dungeon}
+                </span>
+              )}
+            </div>
+            <div className="text-[9px] text-text-muted">{interior.name}</div>
+            {interior.encounters && interior.encounters.length > 0 && (
+              <div className="mt-1.5 pt-1.5 border-t border-red-500/15">
+                <div className="text-[8px] font-semibold uppercase tracking-wider text-red-400/60 mb-0.5">Encounters</div>
+                {interior.encounters.map((name, i) => (
+                  <div key={i} className="text-[9px] text-red-300/70 leading-relaxed">{name}</div>
+                ))}
+              </div>
+            )}
+            {pop && (
+              <div className="mt-1.5 pt-1.5 border-t border-border">
+                <div className="text-[9px] text-emerald-400 flex items-center gap-1">
+                  <Users className="h-2 w-2" />
+                  {pop.players.map(p => p.name).join(', ')}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function InteriorPopup({
   area,
   interiors,
@@ -174,57 +294,12 @@ function InteriorPopup({
             const pop = playersByTag.get(interior.tag);
             const dungeon = interior.dungeonLevel;
             return (
-              <div
+              <InteriorCard
                 key={interior.id}
-                className={`group relative rounded overflow-hidden border transition-colors ${
-                  dungeon
-                    ? 'border-red-500/20 bg-red-950/20 hover:border-red-400/50'
-                    : 'border-white/5 bg-black/30 hover:border-amber-400/40'
-                }`}
-              >
-                <div className="relative">
-                  <img
-                    src={`/api/live/analytics/worldmap-tiles/${interior.id}?v=3`}
-                    alt=""
-                    draggable={false}
-                    className="w-full aspect-square object-contain bg-black/50"
-                    style={{ imageRendering: 'pixelated' }}
-                  />
-                  {dungeon && (
-                    <div className="absolute inset-0 pointer-events-none"
-                      style={{ boxShadow: 'inset 0 0 12px rgba(180,20,20,0.3)' }}
-                    />
-                  )}
-                </div>
-                {pop && (
-                  <div
-                    className="absolute top-1 right-1"
-                    title={pop.players.map(p => p.name).join(', ')}
-                  >
-                    <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-emerald-500 text-white text-[7px] font-bold shadow-sm shadow-emerald-500/50 animate-pulse">
-                      {pop.playerCount}
-                    </div>
-                  </div>
-                )}
-                <div className="px-1.5 py-1">
-                  <div className="flex items-center gap-1">
-                    {dungeon && <Skull className="h-2.5 w-2.5 text-red-400 shrink-0" />}
-                    <div className={`text-[10px] truncate transition-colors ${
-                      dungeon ? 'text-red-300/70 group-hover:text-red-200' : 'text-text-muted group-hover:text-text'
-                    }`} title={interior.name}>
-                      {interior.name.includes(' - ') ? interior.name.split(' - ').pop() : interior.name.split(': ').pop()}
-                    </div>
-                    {interior.dungeonLevel && (
-                      <span className="text-[8px] font-bold text-red-400/70 shrink-0">L{interior.dungeonLevel}</span>
-                    )}
-                  </div>
-                  {interior.encounters && interior.encounters.length > 0 && (
-                    <div className="text-[8px] text-red-300/50 truncate mt-0.5" title={interior.encounters.join(', ')}>
-                      {interior.encounters.slice(0, 3).join(', ')}
-                    </div>
-                  )}
-                </div>
-              </div>
+                interior={interior}
+                pop={pop}
+                dungeon={dungeon}
+              />
             );
           })}
         </div>
