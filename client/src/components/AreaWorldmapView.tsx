@@ -271,7 +271,7 @@ export function AreaWorldmapView() {
               return (
               <img
                 key={area.id}
-                src={`/api/live/analytics/worldmap-tiles/${area.id}`}
+                src={`/api/live/analytics/worldmap-tiles/${area.id}?v=2`}
                 alt=""
                 draggable={false}
                 loading="lazy"
