@@ -18,6 +18,7 @@ import { LiveDashboard } from './pages/LiveDashboard';
 import { LiveChat } from './pages/LiveChat';
 import { LiveFeed } from './pages/LiveFeed';
 import { AreaHeatmap } from './pages/AreaHeatmap';
+import { Worldmap } from './pages/Worldmap';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,6 +49,7 @@ export default function App() {
               <Route path="live/chat" element={<LiveChat />} />
               <Route path="live/feed" element={<LiveFeed />} />
               <Route path="live/heatmap" element={<AreaHeatmap />} />
+              <Route path="live/worldmap" element={<Worldmap />} />
               <Route path="search" element={<SearchResults />} />
 
               {/* Admin routes */}

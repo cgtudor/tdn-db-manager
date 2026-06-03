@@ -1,4 +1,4 @@
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useState, useMemo, Suspense, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getAreaAnalytics, getDailyHistory, getAreaGraph, getAreaTransitions } from '../api/live';
 import type { AreaAnalytics } from '../api/live';
@@ -6,12 +6,10 @@ import { Loading } from '../components/shared/Loading';
 import { EmptyState } from '../components/shared/EmptyState';
 import {
   Map, TrendingUp, BarChart3, ArrowUpDown, Eye, EyeOff,
-  Flame, Snowflake, Calendar, Network, Globe,
+  Flame, Snowflake, Calendar, Network,
 } from 'lucide-react';
 
 const AreaMapView = lazy(() => import('../components/AreaMapView').then(m => ({ default: m.AreaMapView })));
-const AreaWorldmapView = lazy(() => import('../components/AreaWorldmapView').then(m => ({ default: m.AreaWorldmapView })));
-
 type SortField = 'today' | 'week' | 'month' | 'allTime' | 'areaName';
 type SortDir = 'asc' | 'desc';
 type TimeRange = 'today' | 'week' | 'month' | 'allTime';
@@ -163,7 +161,7 @@ export function AreaHeatmap() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [timeRange, setTimeRange] = useState<TimeRange>('week');
   const [showDead, setShowDead] = useState(false);
-  const [view, setView] = useState<'table' | 'heatmap' | 'map' | 'worldmap'>('heatmap');
+  const [view, setView] = useState<'table' | 'heatmap' | 'map'>('heatmap');
 
   const { data: areas, isLoading: areasLoading } = useQuery({
     queryKey: ['area-analytics'],
@@ -254,12 +252,6 @@ export function AreaHeatmap() {
             >
               <Network className="h-3 w-3 inline mr-1" />Map
             </button>
-            <button
-              onClick={() => setView('worldmap')}
-              className={`px-3 py-1 text-xs ${view === 'worldmap' ? 'bg-primary text-white' : 'bg-surface text-text-muted hover:text-text'}`}
-            >
-              <Globe className="h-3 w-3 inline mr-1" />Worldmap
-            </button>
           </div>
 
           {/* Time range */}
@@ -318,17 +310,13 @@ export function AreaHeatmap() {
         </div>
       </div>
 
-      {/* Daily chart (hide on map/worldmap views) */}
-      {view !== 'map' && view !== 'worldmap' && !historyLoading && dailyHistory && dailyHistory.length > 0 && (
+      {/* Daily chart (hide on map view) */}
+      {view !== 'map' && !historyLoading && dailyHistory && dailyHistory.length > 0 && (
         <DailyChart data={dailyHistory} />
       )}
 
-      {/* Map / Heatmap / Table / Worldmap view */}
-      {view === 'worldmap' ? (
-        <Suspense fallback={<Loading message="Loading worldmap..." />}>
-          <AreaWorldmapView />
-        </Suspense>
-      ) : view === 'map' ? (
+      {/* Map / Heatmap / Table view */}
+      {view === 'map' ? (
         <div className="relative">
           {graphData ? (
             <Suspense fallback={<Loading message="Loading map..." />}>

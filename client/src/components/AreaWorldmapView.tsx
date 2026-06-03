@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ZoomIn, ZoomOut, Maximize2, Users, DoorOpen, X } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Users, DoorOpen, X, Skull } from 'lucide-react';
 import { subscribePlayerStream } from '../api/live';
 import type { AreaPopulation } from '../types';
 import { apiGet } from '../api/client';
@@ -11,6 +11,7 @@ interface WorldmapArea {
   region: string;
   tag: string;
   isInterior: boolean;
+  isDungeon: boolean;
   x: number;
   y: number;
   w: number;
@@ -31,6 +32,7 @@ interface WorldmapInterior {
   id: string;
   name: string;
   tag: string;
+  isDungeon: boolean;
   w: number;
   h: number;
 }
@@ -168,18 +170,30 @@ function InteriorPopup({
         <div className="p-2 grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))' }}>
           {interiors.map(interior => {
             const pop = playersByTag.get(interior.tag);
+            const dungeon = interior.isDungeon;
             return (
               <div
                 key={interior.id}
-                className="group relative rounded overflow-hidden border border-white/5 bg-black/30 hover:border-amber-400/40 transition-colors"
+                className={`group relative rounded overflow-hidden border transition-colors ${
+                  dungeon
+                    ? 'border-red-500/20 bg-red-950/20 hover:border-red-400/50'
+                    : 'border-white/5 bg-black/30 hover:border-amber-400/40'
+                }`}
               >
-                <img
-                  src={`/api/live/analytics/worldmap-tiles/${interior.id}?v=3`}
-                  alt=""
-                  draggable={false}
-                  className="w-full aspect-square object-contain bg-black/50"
-                  style={{ imageRendering: 'pixelated' }}
-                />
+                <div className="relative">
+                  <img
+                    src={`/api/live/analytics/worldmap-tiles/${interior.id}?v=3`}
+                    alt=""
+                    draggable={false}
+                    className="w-full aspect-square object-contain bg-black/50"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+                  {dungeon && (
+                    <div className="absolute inset-0 pointer-events-none"
+                      style={{ boxShadow: 'inset 0 0 12px rgba(180,20,20,0.3)' }}
+                    />
+                  )}
+                </div>
                 {pop && (
                   <div
                     className="absolute top-1 right-1"
@@ -190,8 +204,11 @@ function InteriorPopup({
                     </div>
                   </div>
                 )}
-                <div className="px-1.5 py-1">
-                  <div className="text-[10px] text-text-muted truncate group-hover:text-text transition-colors" title={interior.name}>
+                <div className="px-1.5 py-1 flex items-center gap-1">
+                  {dungeon && <Skull className="h-2.5 w-2.5 text-red-400 shrink-0" />}
+                  <div className={`text-[10px] truncate transition-colors ${
+                    dungeon ? 'text-red-300/70 group-hover:text-red-200' : 'text-text-muted group-hover:text-text'
+                  }`} title={interior.name}>
                     {interior.name.includes(' - ') ? interior.name.split(' - ').pop() : interior.name.split(': ').pop()}
                   </div>
                 </div>
@@ -490,6 +507,8 @@ export function AreaWorldmapView() {
             {/* Area tiles - each is its own positioned image */}
             {visibleAreas.map(area => {
               const hasInteriors = !!meta.interiors?.[area.id];
+              const isHovered = hoveredArea?.id === area.id;
+              const isPopupTarget = interiorPopup?.area.id === area.id;
               return (
               <img
                 key={area.id}
@@ -509,9 +528,12 @@ export function AreaWorldmapView() {
                   imageRendering: scale > 1.5 ? 'pixelated' : 'auto',
                   userSelect: 'none',
                   cursor: hasInteriors ? 'pointer' : undefined,
-                  outline: hoveredArea?.id === area.id ? '2px solid rgba(255,255,255,0.7)'
-                    : interiorPopup?.area.id === area.id ? '2px solid rgba(245,180,60,0.8)' : 'none',
-                  zIndex: hoveredArea?.id === area.id ? 10 : 1,
+                  outline: isHovered ? '2px solid rgba(255,255,255,0.7)'
+                    : isPopupTarget ? '2px solid rgba(245,180,60,0.8)' : 'none',
+                  boxShadow: area.isDungeon && scale > 0.15
+                    ? `inset 0 0 ${Math.max(4, 12 * scale)}px rgba(220,40,40,0.35), 0 0 ${Math.max(3, 8 * scale)}px rgba(180,20,20,0.25)`
+                    : undefined,
+                  zIndex: isHovered ? 10 : 1,
                 }}
               />
               );
@@ -531,6 +553,24 @@ export function AreaWorldmapView() {
               >
                 <div className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-500/90 shadow-sm shadow-amber-500/40">
                   <DoorOpen className="h-2.5 w-2.5 text-white" />
+                </div>
+              </div>
+            ))}
+
+            {/* Skull badges on dungeon areas */}
+            {scale > 0.15 && visibleAreas.filter(a => a.isDungeon).map(area => (
+              <div
+                key={`skull-${area.id}`}
+                style={{
+                  position: 'absolute',
+                  left: pan.x + area.x * scale - 4,
+                  top: pan.y + (area.y + area.h) * scale - 6,
+                  pointerEvents: 'none',
+                  zIndex: 15,
+                }}
+              >
+                <div className="flex items-center justify-center w-[18px] h-[18px] rounded bg-red-900/80 border border-red-500/40 shadow-sm shadow-red-900/60">
+                  <Skull className="h-2.5 w-2.5 text-red-300" />
                 </div>
               </div>
             ))}
@@ -598,7 +638,14 @@ export function AreaWorldmapView() {
             style={{ left: mousePos.x + 14, top: mousePos.y + 14 }}
           >
             <div className="bg-surface border border-border rounded-lg shadow-xl px-3 py-2 max-w-xs">
-              <div className="text-xs font-semibold text-text">{hoveredArea.name}</div>
+              <div className="text-xs font-semibold text-text flex items-center gap-1.5">
+                {hoveredArea.name}
+                {hoveredArea.isDungeon && (
+                  <span className="inline-flex items-center gap-0.5 px-1 py-px rounded text-[8px] font-bold uppercase tracking-wider bg-red-900/60 text-red-300 border border-red-500/30">
+                    <Skull className="h-2 w-2" />Dungeon
+                  </span>
+                )}
+              </div>
               <div className="text-[10px] text-text-muted">{hoveredArea.region}</div>
               {meta?.interiors?.[hoveredArea.id] && (
                 <div className="text-[10px] text-amber-400 mt-0.5 flex items-center gap-1">
