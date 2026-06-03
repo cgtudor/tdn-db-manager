@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ZoomIn, ZoomOut, Maximize2, Users, DoorOpen, X, Skull } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Users, DoorOpen, X, Skull, Search } from 'lucide-react';
 import { subscribePlayerStream } from '../api/live';
 import type { AreaPopulation } from '../types';
 import { apiGet } from '../api/client';
@@ -322,6 +322,9 @@ export function AreaWorldmapView() {
   const [showLinks, setShowLinks] = useState(true);
   const [fitted, setFitted] = useState(false);
   const [interiorPopup, setInteriorPopup] = useState<{ area: WorldmapArea; screenX: number; screenY: number } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const { data: meta } = useQuery({
     queryKey: ['worldmap-meta'],
@@ -507,11 +510,133 @@ export function AreaWorldmapView() {
       .map(([name, r]) => ({ name, x: r.sx / r.c, y: r.sy / r.c }));
   }, [meta, scale]);
 
+  // Search results: match areas + interiors by name
+  const searchResults = useMemo(() => {
+    if (!meta || searchQuery.length < 2) return [];
+    const q = searchQuery.toLowerCase();
+    const results: { id: string; name: string; type: 'area' | 'interior'; area: WorldmapArea; parentId?: string }[] = [];
+
+    for (const area of meta.areas) {
+      if (area.isInterior) continue;
+      if (area.name.toLowerCase().includes(q)) {
+        results.push({ id: area.id, name: area.name, type: 'area', area });
+      }
+    }
+
+    if (meta.interiors) {
+      const areaById = new Map(meta.areas.map(a => [a.id, a]));
+      for (const [parentId, children] of Object.entries(meta.interiors)) {
+        const parentArea = areaById.get(parentId);
+        if (!parentArea) continue;
+        for (const child of children) {
+          if (child.name.toLowerCase().includes(q)) {
+            results.push({ id: child.id, name: child.name, type: 'interior', area: parentArea, parentId });
+          }
+        }
+      }
+    }
+
+    return results.slice(0, 12);
+  }, [meta, searchQuery]);
+
+  const panToArea = useCallback((area: WorldmapArea) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    // Zoom to show the area nicely
+    const targetScale = clampScale(Math.min(rect.width / (area.w * 4), rect.height / (area.h * 4)));
+    setScale(targetScale);
+    setPan({
+      x: rect.width / 2 - (area.x + area.w / 2) * targetScale,
+      y: rect.height / 2 - (area.y + area.h / 2) * targetScale,
+    });
+    setSearchQuery('');
+    setSearchOpen(false);
+  }, []);
+
+  // Close search dropdown on click outside
+  useEffect(() => {
+    if (!searchOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [searchOpen]);
+
   return (
     <div className="rounded-lg border border-border bg-surface overflow-hidden flex-1 min-h-0">
       {/* Toolbar */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-surface-dim">
         <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">Worldmap</span>
+
+        {/* Search */}
+        <div ref={searchRef} className="relative ml-2">
+          <div className="flex items-center gap-1 bg-surface border border-border rounded px-2 py-0.5">
+            <Search className="h-3 w-3 text-text-muted shrink-0" />
+            <input
+              type="text"
+              placeholder="Search areas..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+              onFocus={() => { if (searchQuery.length >= 2) setSearchOpen(true); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') { setSearchQuery(''); setSearchOpen(false); (e.target as HTMLInputElement).blur(); }
+                if (e.key === 'Enter' && searchResults.length > 0) {
+                  panToArea(searchResults[0].area);
+                  if (searchResults[0].type === 'interior' && searchResults[0].parentId) {
+                    const rect = containerRef.current?.getBoundingClientRect();
+                    if (rect) setInteriorPopup({ area: searchResults[0].area, screenX: rect.left + rect.width / 2, screenY: rect.top + rect.height / 2 });
+                  }
+                }
+              }}
+              className="bg-transparent text-xs text-text placeholder:text-text-muted outline-none w-40"
+            />
+            {searchQuery && (
+              <button onClick={() => { setSearchQuery(''); setSearchOpen(false); }} className="text-text-muted hover:text-text">
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Dropdown */}
+          {searchOpen && searchResults.length > 0 && (
+            <div className="absolute top-full left-0 mt-1 w-80 bg-surface border border-border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
+              {searchResults.map((result) => (
+                <button
+                  key={`${result.type}-${result.id}`}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-surface-dim transition-colors border-b border-border/50 last:border-0"
+                  onClick={() => {
+                    panToArea(result.area);
+                    if (result.type === 'interior' && result.parentId) {
+                      const rect = containerRef.current?.getBoundingClientRect();
+                      if (rect) setInteriorPopup({ area: result.area, screenX: rect.left + rect.width / 2, screenY: rect.top + rect.height / 2 });
+                    }
+                  }}
+                >
+                  {result.type === 'interior' ? (
+                    <DoorOpen className="h-3 w-3 text-amber-400 shrink-0" />
+                  ) : result.area.dungeonLevel ? (
+                    <Skull className="h-3 w-3 text-red-400 shrink-0" />
+                  ) : (
+                    <div className="w-3 h-3 rounded-sm bg-white/10 shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs text-text truncate">{result.name}</div>
+                    <div className="text-[10px] text-text-muted truncate">
+                      {result.type === 'interior' ? `Inside: ${result.area.name}` : result.area.region}
+                    </div>
+                  </div>
+                  {result.area.dungeonLevel && (
+                    <span className="text-[9px] font-bold text-red-400/70 shrink-0">L{result.area.dungeonLevel}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="flex-1" />
         <button
           onClick={() => setShowLinks(!showLinks)}
