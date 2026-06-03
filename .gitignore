@@ -3,6 +3,7 @@ dist/
 server/data/*
 !server/data/area_graph.json
 !server/data/worldmap.png
+!server/data/worldmap_meta.json
 .env
 *.sqlite3
 !server/src/db/schema.sql

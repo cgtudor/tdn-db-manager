@@ -89,6 +89,27 @@ router.get('/analytics/worldmap-image', requireDM, async (_req: Request, res: Re
   }
 });
 
+let cachedWorldmapMeta: any = null;
+let cachedWorldmapMetaMtime: number = 0;
+
+router.get('/analytics/worldmap-meta', requireDM, async (_req: Request, res: Response) => {
+  try {
+    const metaPath = config.worldmapPath.replace(/\.png$/, '_meta.json');
+    if (!fs.existsSync(metaPath)) {
+      res.status(404).json({ error: 'Worldmap metadata not found.' });
+      return;
+    }
+    const stat = fs.statSync(metaPath);
+    if (!cachedWorldmapMeta || stat.mtimeMs !== cachedWorldmapMetaMtime) {
+      cachedWorldmapMeta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+      cachedWorldmapMetaMtime = stat.mtimeMs;
+    }
+    res.json(cachedWorldmapMeta);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/analytics/area-graph', requireDM, async (_req: Request, res: Response) => {
   try {
     const graphPath = config.areaGraphPath;
