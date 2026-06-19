@@ -18,6 +18,8 @@ import auditRoutes from './routes/audit';
 import userRoutes from './routes/users';
 import storeRoutes from './routes/stores';
 import liveRoutes from './routes/live';
+import { createOverridesRouter } from './routes/overrides';
+import { requireAuth, requireAdmin } from './auth/middleware';
 
 export function createApp() {
   const app = express();
@@ -77,6 +79,16 @@ export function createApp() {
   app.use('/api/users', userRoutes);
   app.use('/api/stores', storeRoutes);
   app.use('/api/live', liveRoutes);
+  app.use('/api/devfiles', createOverridesRouter({
+    getDir: () => config.devOverridesDir,
+    guard: requireAuth,
+    auditName: 'dev_overrides',
+  }));
+  app.use('/api/liveoverrides', createOverridesRouter({
+    getDir: () => config.liveOverridesDir,
+    guard: requireAdmin,
+    auditName: 'live_overrides',
+  }));
 
   // Serve static frontend in production
   const staticPath = path.join(__dirname, '../../client/dist');

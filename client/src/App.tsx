@@ -19,6 +19,7 @@ import { LiveChat } from './pages/LiveChat';
 import { LiveFeed } from './pages/LiveFeed';
 import { AreaHeatmap } from './pages/AreaHeatmap';
 import { Worldmap } from './pages/Worldmap';
+import { OverridesManager } from './pages/OverridesManager';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,9 +52,25 @@ export default function App() {
               <Route path="live/heatmap" element={<AreaHeatmap />} />
               <Route path="live/worldmap" element={<Worldmap />} />
               <Route path="search" element={<SearchResults />} />
+              <Route path="overrides" element={
+                <OverridesManager
+                  apiBase="/api/devfiles"
+                  queryKey="devfiles"
+                  title="Dev Overrides"
+                  description="Files in the dev server's override folder. Drop files here to hotfix the live dev server; deletes take effect immediately."
+                />
+              } />
 
               {/* Admin routes */}
               <Route element={<AdminRoute />}>
+                <Route path="live-overrides" element={
+                  <OverridesManager
+                    apiBase="/api/liveoverrides"
+                    queryKey="liveoverrides"
+                    title="Live Overrides"
+                    description="Files in the LIVE server's override folder. Changes here affect the production server immediately — admin only."
+                  />
+                } />
                 <Route path="backups" element={<BackupManager />} />
                 <Route path="audit" element={<AuditLog />} />
                 <Route path="users" element={<UserManager />} />

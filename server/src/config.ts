@@ -29,6 +29,8 @@ export const config = {
 
   databaseDir: process.env.DATABASE_DIR || path.resolve(__dirname, '../../../databases_backups'),
   appDataDir: process.env.APP_DATA_DIR || path.resolve(__dirname, '../data'),
+  devOverridesDir: process.env.DEV_OVERRIDES_DIR || path.resolve(__dirname, '../../../dev_overrides'),
+  liveOverridesDir: process.env.LIVE_OVERRIDES_DIR || path.resolve(__dirname, '../../../live_overrides'),
 
   adminDiscordIds: (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean),
 

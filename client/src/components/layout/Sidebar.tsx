@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Swords, FlaskConical, Leaf, Store, Database,
   Shield, ClipboardList, Users, ChevronDown, ChevronRight, LogOut, Search,
   Sun, Moon, Monitor,
-  Activity, MessageSquare, Radio, Map, Globe,
+  Activity, MessageSquare, Radio, Map, Globe, FolderCog, ServerCog,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -77,6 +77,7 @@ export function Sidebar() {
         <SidebarLink to="/ingredients" icon={Leaf}>Ingredients</SidebarLink>
         <SidebarLink to="/stores" icon={Store}>Stores</SidebarLink>
         <SidebarLink to="/search" icon={Search}>Search</SidebarLink>
+        <SidebarLink to="/overrides" icon={FolderCog}>Dev Overrides</SidebarLink>
 
         {/* Live Server (DM/Admin only) */}
         {isDM && (
@@ -114,6 +115,7 @@ export function Sidebar() {
         {isAdmin && (
           <div className="pt-3">
             <SectionHeader>Admin</SectionHeader>
+            <SidebarLink to="/live-overrides" icon={ServerCog}>Live Overrides</SidebarLink>
             <SidebarLink to="/backups" icon={Shield}>Backups</SidebarLink>
             <SidebarLink to="/audit" icon={ClipboardList}>Audit Log</SidebarLink>
             <SidebarLink to="/users" icon={Users}>Users</SidebarLink>
