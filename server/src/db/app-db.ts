@@ -29,7 +29,7 @@ export function getAppDb(): Database.Database {
 function migrateAuditLogConstraint(): void {
   // Check if the existing constraint needs updating by inspecting the table SQL
   const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='audit_log'").get() as { sql: string } | undefined;
-  if (!tableInfo || tableInfo.sql.includes('DROP_TABLE')) return;
+  if (!tableInfo || tableInfo.sql.includes('UPLOAD')) return;
 
   // Recreate the table with the updated constraint
   db.exec(`
@@ -41,7 +41,7 @@ function migrateAuditLogConstraint(): void {
       username TEXT NOT NULL,
       database_name TEXT NOT NULL,
       table_name TEXT NOT NULL,
-      action TEXT NOT NULL CHECK(action IN ('INSERT', 'UPDATE', 'DELETE', 'BULK_DELETE', 'MOVE', 'RESTORE', 'DROP_TABLE', 'DELETE_DATABASE')),
+      action TEXT NOT NULL CHECK(action IN ('INSERT', 'UPDATE', 'DELETE', 'BULK_DELETE', 'MOVE', 'RESTORE', 'DROP_TABLE', 'DELETE_DATABASE', 'UPLOAD')),
       row_identifier TEXT,
       old_values TEXT,
       new_values TEXT,
